@@ -1,0 +1,6 @@
+[submodule "Musashi"]
+	path = libs/Musashi
+	url = https://github.com/kstenerud/Musashi.git
+[submodule "libs/hqx"]
+	path = libs/hqx
+	url = https://github.com/jflemer/hqx.git

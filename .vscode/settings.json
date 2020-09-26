@@ -1,0 +1,16 @@
+{
+    "files.associations": {
+        "ratio": "c",
+        "string_view": "c",
+        "tuple": "c",
+        "optional": "c",
+        "istream": "c",
+        "ostream": "c",
+        "system_error": "c",
+        "array": "c",
+        "functional": "c",
+        "type_traits": "c",
+        "utility": "c",
+        "variant": "c"
+    }
+}

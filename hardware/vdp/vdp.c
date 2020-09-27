@@ -93,34 +93,33 @@ void draw_cell_pixel(unsigned int cell, int cell_x, int cell_y, int x, int y)
 void vdp_render_bg(int line, int plane, int priority)
 {
     int h_cells = 32, v_cells = 32;
-    unsigned int hscroll_mask;
-    unsigned short vscroll_mask;
     int scroll_base;
+    unsigned int hscroll_mask;
+    unsigned int size = REG16_HSCROLL_SIZE | (REG16_VSCROLL_SIZE<<4);
+    unsigned short vscroll_mask;
 
-    switch (REG16_HSCROLL_SIZE)
-    {
-    case 0:
-        h_cells = 32;
-        break;
-    case 1:
-        h_cells = 64;
-        break;
-    case 3:
-        h_cells = 128;
-        break;
-    }
-    switch (REG16_VSCROLL_SIZE)
-    {
-    case 0:
-        v_cells = 32;
-        break;
-    case 1:
-        v_cells = 64;
-        break;
-    case 3:
-        v_cells = 128;
-        break;
-    }
+  	switch (size)
+	{
+		case 0x00: h_cells = 32; v_cells = 32; break;
+		case 0x01: h_cells = 64; v_cells = 32; break;
+		case 0x02: h_cells = 64; v_cells = 1; break;
+		case 0x03: h_cells = 128;v_cells = 32; break;
+
+		case 0x10: h_cells = 32; v_cells = 64; break;
+		case 0x11: h_cells = 64; v_cells = 64; break;
+		case 0x12: h_cells = 64; v_cells = 1; break;
+		case 0x13: h_cells = 128;v_cells = 32;break;
+
+		case 0x20: h_cells = 32; v_cells = 64; break;
+		case 0x21: h_cells = 64; v_cells = 64; break;
+		case 0x22: h_cells = 64; v_cells = 1; break;
+		case 0x23: h_cells = 128;v_cells = 64; break;
+
+		case 0x30: h_cells = 32; v_cells = 128; break;
+		case 0x31: h_cells = 64; v_cells = 64; break;
+		case 0x32: h_cells = 64; v_cells = 1; break;
+		case 0x33: h_cells = 128;v_cells = 128;break;
+	}
 
     switch (REG11_HSCROLL_MODE)
     {
@@ -262,57 +261,97 @@ void vdp_render_sprites(int line, int priority)
 void vdp_render_window(int line, int priority)
 {
     int h_cells = 64, v_cells = 32;
-    int hint = REG10_LINE_COUNTER;
+    int numcolumns = 0;
+    int window_firstcol, window_lastcol;
+    int window_firstline, window_lastline;
+    int window_hsize = 32, window_vsize = 32;
+    int window_is_bugged = 0;
+    int window_right=REG17_WINDOW_RIGHT;
+    int window_down=REG18_WINDOW_DOWN;
+    int non_window_firstcol, non_window_lastcol;
+    int sw=REG12_RS0 | REG12_RS1 << 1;
+    int sh=REG1_240_LINE?240:224;
+    
+    unsigned int size = REG16_HSCROLL_SIZE | (REG16_VSCROLL_SIZE<<4);
+    unsigned int base_w;
 
-    switch (REG16_HSCROLL_SIZE)
+	switch (sw)
+	{
+		case 0: numcolumns = 32; window_hsize = 32; window_vsize = 32; base_w = ((REG3_NAMETABLE_W&0x1f)<<11); break;
+		case 1: numcolumns = 32; window_hsize = 32; window_vsize = 32; base_w = ((REG3_NAMETABLE_W&0x1f)<<11); break;
+		case 2: numcolumns = 40; window_hsize = 64; window_vsize = 32; base_w = ((REG3_NAMETABLE_W&0x1e)<<11); break;
+		case 3: numcolumns = 40; window_hsize = 64; window_vsize = 32; base_w = ((REG3_NAMETABLE_W&0x1e)<<11); break; // talespin cares about base mask, used for status bar
+	}
+	if (window_right)
+	{
+		window_firstcol = REG17_WINDOW_HPOS*16;
+		window_lastcol = numcolumns*8;
+		if (window_firstcol>window_lastcol) window_firstcol = window_lastcol;
+
+		non_window_firstcol = 0;
+		non_window_lastcol = window_firstcol;
+	}
+	else
+	{
+		window_firstcol = 0;
+		window_lastcol = REG17_WINDOW_HPOS*16;
+		if (window_lastcol>numcolumns*8) window_lastcol = numcolumns*8;
+
+		non_window_firstcol = window_lastcol;
+		non_window_lastcol = numcolumns*8;
+
+		if (window_lastcol!=0) window_is_bugged=1;
+	}
+
+	if (window_down)
+	{
+		window_firstline = REG18_WINDOW_VPOS*8;
+		window_lastline = sh; // 240 in PAL?
+		if (window_firstline>sh) window_firstline = screen_height;
+	}
+	else
+	{
+		window_firstline = 0;
+		window_lastline = REG18_WINDOW_VPOS*8;
+		if (window_lastline>sh) window_lastline = screen_height;
+	}
+
+	/* if we're on a window scanline between window_firstline and window_lastline the window is the full width of the screen */
+	if (line>=window_firstline && line < window_lastline)
+	{
+		window_firstcol = 0; window_lastcol = numcolumns*8; // window is full-width of the screen
+		non_window_firstcol = 0; non_window_lastcol=0; // disable non-window
+	}
+
+ 	switch (size)
+	{
+		case 0x00: h_cells = 32; v_cells = 32; break;
+		case 0x01: h_cells = 64; v_cells = 32; break;
+		case 0x02: h_cells = 64; v_cells = 1; break;
+		case 0x03: h_cells = 128;v_cells = 32; break;
+
+		case 0x10: h_cells = 32; v_cells = 64; break;
+		case 0x11: h_cells = 64; v_cells = 64; break;
+		case 0x12: h_cells = 64; v_cells = 1; break;
+		case 0x13: h_cells = 128;v_cells = 32;break;
+
+		case 0x20: h_cells = 32; v_cells = 64; break;
+		case 0x21: h_cells = 64; v_cells = 64; break;
+		case 0x22: h_cells = 64; v_cells = 1; break;
+		case 0x23: h_cells = 128;v_cells = 64; break;
+
+		case 0x30: h_cells = 32; v_cells = 128; break;
+		case 0x31: h_cells = 64; v_cells = 64; break;
+		case 0x32: h_cells = 64; v_cells = 1; break;
+		case 0x33: h_cells = 128;v_cells = 128;break;
+	}
+
+    for (int column = window_firstcol; column < window_lastcol; column++)
     {
-    case 0:
-        h_cells = 32;
-        break;
-    case 1:
-        h_cells = 64;
-        break;
-    case 3:
-        h_cells = 128;
-        break;
-    }
-    switch (REG16_VSCROLL_SIZE)
-    {
-    case 0:
-        v_cells = 32;
-        break;
-    case 1:
-        v_cells = 64;
-        break;
-    case 3:
-        v_cells = 128;
-        break;
-    }
 
-    if (hint)
-    {
-        int hint_top = ((hint / 4) - 1);
-        int hint_down = screen_height-hint_top-1;
-        if (hint_top<line && line < hint_down)
-            return;
-    }
-
-    for (int column = 0; (column/8) < h_cells; column++)
-    {
-        //if (hint && line<160)
-        //     printf("line: %d | hint %d\n", (line, hint, screen_height));
-
-        // int inverted = (vdp_regs[12]&0xFF)>7;
-        // if (hint != old_hint) {
-        //     old_hint=hint;
-        //     printf("reg:(%d)\n", ((vdp_regs[12])&0xFF));
-        //     printf("inc:(%d)\n", ((vdp_regs[12])&0x1F));
-        // }
-
-        int vcolumn = (line)&((v_cells*8)-1);
-		int hcolumn = (column)&((h_cells*8)-1); 
-        int base_addr = (REG3_NAMETABLE_W) + ((vcolumn>>3) * h_cells + (hcolumn>>3)) * 2;
-        //int addr = (limit == 0 ?  base_addr : base_addr&0xF000);
+        int vcolumn = (line)&((window_vsize*8)-1);
+		int hcolumn = column&((window_hsize*8)-1); 
+        int base_addr = (base_w) + ((vcolumn>>3) * window_hsize + (hcolumn>>3)) * 2;
         unsigned int cell = (VRAM[base_addr] << 8) | VRAM[base_addr+1];
         int pri = ((cell & 0x8000) >> 15);
         if ((pri == 1 && priority == 1) || (pri == 0 && priority == 0))

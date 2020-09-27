@@ -4,4 +4,6 @@
 *.so
 *.pyc
 *.windhex.cfg
+dump/*
 tests/*
+screenshots/*

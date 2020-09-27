@@ -90,11 +90,14 @@ void draw_cell_pixel(unsigned int cell, int cell_x, int cell_y, int x, int y)
 /*
  * Render the scroll layers (plane A and B)
  */
-void vdp_render_bg(int line, int priority)
+void vdp_render_bg(int line, int plane, int priority)
 {
     int h_cells = 32, v_cells = 32;
+    unsigned int hscroll_mask;
+    unsigned short vscroll_mask;
+    int scroll_base;
 
-    switch (vdp_regs[16] & 3)
+    switch (REG16_HSCROLL_SIZE)
     {
     case 0:
         h_cells = 32;
@@ -106,7 +109,7 @@ void vdp_render_bg(int line, int priority)
         h_cells = 128;
         break;
     }
-    switch ((vdp_regs[16] >> 4) & 3)
+    switch (REG16_VSCROLL_SIZE)
     {
     case 0:
         v_cells = 32;
@@ -119,10 +122,7 @@ void vdp_render_bg(int line, int priority)
         break;
     }
 
-    int hscroll_type = vdp_regs[11] & 3;
-    unsigned char *hscroll_table = &VRAM[vdp_regs[13] << 10];
-    unsigned int hscroll_mask;
-    switch (hscroll_type)
+    switch (REG11_HSCROLL_MODE)
     {
     case 0x00:
         hscroll_mask = 0x0000;
@@ -138,35 +138,40 @@ void vdp_render_bg(int line, int priority)
         break;
     }
 
-    unsigned short vscroll_mask;
-    if (vdp_regs[11] & 4)
+    if (REG11_VSCROLL_MODE)
         vscroll_mask = 0xfff0;
     else
         vscroll_mask = 0x0000;
 
-    for (int scroll_i = 0; scroll_i < 2; scroll_i++)
+    if (plane == 0)
+        scroll_base = REG4_NAMETABLE_B;
+    else
+        scroll_base = REG2_NAMETABLE_A;
+
+    int hscroll_addr = REG13_HSCROLL_ADDRESS + ((line & hscroll_mask)) * 4 + (plane ^ 1) * 2;;
+    short hscroll = VRAM[hscroll_addr]<<8|VRAM[hscroll_addr+1];
+    for (int column = 0; column < screen_width; column++)
     {
-        unsigned char *scroll;
-        if (scroll_i == 0)
-            scroll = &VRAM[vdp_regs[4] << 13];
+        int vscroll_addr = (column & vscroll_mask) / 4 + (plane ^ 1);
+        short vscroll = VSRAM[vscroll_addr] & 0x3ff;
+        int vcolumn = (line+vscroll)&((v_cells*8)-1);
+		int hcolumn = (column-hscroll)&((h_cells*8)-1);
+        int base_addr = (scroll_base + (((vcolumn>>3) * h_cells + (hcolumn>>3)) * 2));
+        unsigned int cell = VRAM[base_addr] << 8 | VRAM[base_addr+1];
+        int pri = ((cell & 0x8000) >> 15);
+        if ((pri == 1 && priority == 1) || (pri == 0 && priority == 0))
+            draw_cell_pixel(cell, hcolumn, vcolumn, column, line);
         else
-            scroll = &VRAM[vdp_regs[2] << 10];
-
-        short hscroll = (hscroll_table[((line & hscroll_mask)) * 4 + (scroll_i ^ 1) * 2] << 8) | hscroll_table[((line & hscroll_mask)) * 4 + (scroll_i ^ 1) * 2 + 1];
-        for (int column = 0; column < screen_width; column++)
-        {
-            short vscroll = VSRAM[(column & vscroll_mask) / 4 + (scroll_i ^ 1)] & 0x3ff;
-            int e_line = (line + vscroll) & (v_cells * 8 - 1);
-            int cell_line = e_line >> 3;
-            int e_column = (column - hscroll) & (h_cells * 8 - 1);
-            int cell_column = e_column >> 3;
-            unsigned int cell = (scroll[(cell_line * h_cells + cell_column) * 2] << 8) | scroll[(cell_line * h_cells + cell_column) * 2 + 1];
-
-            int pri = ((cell & 0x8000) >> 15);
-            if ((pri == 1 && priority == 1) || (pri == 0 && priority == 0))
-                draw_cell_pixel(cell, e_column, e_line, column, line);
-        }
+            column++;
     }
+}
+
+vdp_render_plane_b (int line, int priority){
+    vdp_render_bg(line, 0, priority);
+}
+
+vdp_render_plane_a (int line, int priority){
+    vdp_render_bg(line, 1, priority);
 }
 
 /*
@@ -257,52 +262,61 @@ void vdp_render_sprites(int line, int priority)
 void vdp_render_window(int line, int priority)
 {
     int h_cells = 64, v_cells = 32;
-    unsigned char *buffer;
-    int hint = vdp_regs[10];
+    int hint = REG10_LINE_COUNTER;
 
-   switch (vdp_regs[16] & 3)
+    switch (REG16_HSCROLL_SIZE)
     {
-        case 0: h_cells = 32; break;
-        case 1: h_cells = 64; break;
-        case 3: h_cells = 128; break;
+    case 0:
+        h_cells = 32;
+        break;
+    case 1:
+        h_cells = 64;
+        break;
+    case 3:
+        h_cells = 128;
+        break;
     }
-    switch ((vdp_regs[16]>>4) & 3)
+    switch (REG16_VSCROLL_SIZE)
     {
-        case 0: v_cells = 32; break;
-        case 1: v_cells = 64; break;
-        case 3: v_cells = 128; break;
+    case 0:
+        v_cells = 32;
+        break;
+    case 1:
+        v_cells = 64;
+        break;
+    case 3:
+        v_cells = 128;
+        break;
     }
 
     if (hint)
     {
         int hint_top = ((hint / 4) - 1);
         int hint_down = screen_height-hint_top-1;
-        if (old_hint != hint)
-            old_hint = hint;
         if (hint_top<line && line < hint_down)
             return;
     }
 
-    unsigned short vscroll_mask;
-    if (vdp_regs[11]&4)
-        vscroll_mask = 0xfff0;
-    else
-        vscroll_mask = 0x0000;
-
-    for (int column = 0; (column / 8) < h_cells; column++)
+    for (int column = 0; (column/8) < h_cells; column++)
     {
         //if (hint && line<160)
         //     printf("line: %d | hint %d\n", (line, hint, screen_height));
-        short vscroll = VSRAM[(column & vscroll_mask)/4] & 0x3ff;
-        int scroll_y = line+vscroll;
-        int e_line = scroll_y& (v_cells * 8 - 1);
-        int cell_line = scroll_y >> 3;
-        int e_column = column & (h_cells * 8 - 1);
-        int cell_column = e_column >> 3;
-        buffer = &VRAM[(REG3_NAMETABLE_W) + (cell_line * h_cells + cell_column) * 2];
-        unsigned int cell = (buffer[0] << 8) | buffer[1];
-        if (((cell & 0x8000) && priority) || ((cell & 0x8000) == 0 && priority == 0))
-            draw_cell_pixel(cell, e_column, e_line, column, line);
+
+        // int inverted = (vdp_regs[12]&0xFF)>7;
+        // if (hint != old_hint) {
+        //     old_hint=hint;
+        //     printf("reg:(%d)\n", ((vdp_regs[12])&0xFF));
+        //     printf("inc:(%d)\n", ((vdp_regs[12])&0x1F));
+        // }
+
+        int vcolumn = (line)&((v_cells*8)-1);
+		int hcolumn = (column)&((h_cells*8)-1); 
+        int base_addr = (REG3_NAMETABLE_W) + ((vcolumn>>3) * h_cells + (hcolumn>>3)) * 2;
+        //int addr = (limit == 0 ?  base_addr : base_addr&0xF000);
+        unsigned int cell = (VRAM[base_addr] << 8) | VRAM[base_addr+1];
+        int pri = ((cell & 0x8000) >> 15);
+        if ((pri == 1 && priority == 1) || (pri == 0 && priority == 0))
+            draw_cell_pixel(cell, hcolumn, vcolumn, column, line);
     }
 }
 
@@ -321,10 +335,12 @@ void vdp_render_line(int line)
         set_pixel(screen, i, line, vdp_regs[7] & 0x3f);
     }
 
-    vdp_render_bg(line, 0);      // PLANE A/B LOW
+    vdp_render_plane_b(line, 0); // PLANE B LOW
+    vdp_render_plane_a(line, 0); // PLANE A LOW
     vdp_render_sprites(line, 0); // SPRITES LOW
-    vdp_render_window(line, 0);  // WINDOW HIGH
-    vdp_render_bg(line, 1);      // PLANE A/B HIGH
+    vdp_render_window(line, 0);  // WINDOW LOW
+    vdp_render_plane_b(line, 1); // PLANE B HIGH
+    vdp_render_plane_a(line, 1); // PLANE A HIGH
     vdp_render_sprites(line, 1); // SPRITES HIGH
     vdp_render_window(line, 1);  // WINDOW HIGH
 }

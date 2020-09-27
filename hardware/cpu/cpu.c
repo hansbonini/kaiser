@@ -259,8 +259,8 @@ void frame()
         m68k_execute(64 + 313 + 259); /* HBlank */
         vdp_clear_hblank();
 
-        //int enable_planes = BIT(vdp_regs[1], 6);
-        //if (enable_planes)
+        int enable_planes = BIT(vdp_regs[1], 6);
+        if (enable_planes)
             vdp_render_line(line); /* render line */
             
         m68k_execute(104);

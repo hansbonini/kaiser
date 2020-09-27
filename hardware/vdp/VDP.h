@@ -16,15 +16,22 @@
 #define REG5_SAT_ADDRESS ((vdp_regs[5] & (mode_h40 ? 0x7E : 0x7F)) << 9)
 #define REG5_SAT_SIZE (mode_h40 ? (1 << 10) : (1 << 9))
 #define REG10_LINE_COUNTER BITS(vdp_regs[10], 0, 8)
+#define REG11_HSCROLL_MODE ((vdp_regs[11] & 3))
+#define REG11_VSCROLL_MODE ((vdp_regs[11]&4)>>2)
 #define REG12_MODE_H40 BIT(vdp_regs[12], 0)
+#define REG13_HSCROLL_ADDRESS (vdp_regs[13] << 10)
 #define REG15_DMA_INCREMENT vdp_regs[15]
+#define REG16_UNUSED1 ((vdp_regs[16] & 0xc0) >> 6)
+#define REG16_VSCROLL_SIZE ((vdp_regs[16] >> 4) & 3)
+#define REG16_UNUSED2 ((vdp_regs[16] & 0x0c) >> 2)
+#define REG16_HSCROLL_SIZE (vdp_regs[16] & 3)
 #define REG19_DMA_LENGTH (vdp_regs[19] | (vdp_regs[20] << 8))
 #define REG21_DMA_SRCADDR_LOW (vdp_regs[21] | (vdp_regs[22] << 8))
 #define REG23_DMA_SRCADDR_HIGH ((vdp_regs[23] & 0x7F) << 16)
 #define REG23_DMA_TYPE BITS(vdp_regs[23], 6, 2)
 
 void draw_cell_pixel(unsigned int cell, int cell_x, int cell_y, int x, int y);
-void vdp_render_bg(int line, int priority);
+void vdp_render_bg(int line, int plane, int priority);
 void vdp_render_sprite(int sprite_index, int line);
 void vdp_render_sprites(int line, int priority);
 void vdp_render_line(int line);

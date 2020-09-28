@@ -104,8 +104,8 @@ unsigned int map_address(unsigned int address)
 }
 unsigned int read_memory(unsigned int address)
 {
-    int mirror_mask = (address &0xFF0000) >> 16;
-    int mirror_address = address / (mirror_mask/2);
+    int mirror_mask = (address & 0xFF0000) >> 16;
+    int mirror_address = address / (mirror_mask / 2);
     switch (map_address(address))
     {
     case ROM_ADDR:
@@ -115,7 +115,7 @@ unsigned int read_memory(unsigned int address)
         return ROM[mirror_address];
     case Z80_ADDR:
         if (address >= 0x7F00 && address < 0x7F20)
-            return vdp_read_memory_8(address &0xFFFF);
+            return vdp_read_memory_8(address & 0xFFFF);
         return z80_read_memory_8(address & 0x7FFF);
     case IO_CTRL:
         return io_read_memory(address & 0x1F);
@@ -164,9 +164,10 @@ unsigned int m68k_read_memory_8(unsigned int address)
 unsigned int m68k_read_memory_16(unsigned int address)
 {
     unsigned int range = (address & 0xff0000) >> 16;
-    if (range == 0xa0) {
+    if (range == 0xa0)
+    {
         if (address >= 0x7F00 && address < 0x7F20)
-            return vdp_read_memory_16(address &0xFFFF);
+            return vdp_read_memory_16(address & 0xFFFF);
         return z80_read_memory_16(address & 0x7FFF);
     }
     if (range >= 0xc0 && range <= 0xdf)
@@ -196,9 +197,10 @@ void m68k_write_memory_8(unsigned int address, unsigned int value)
 void m68k_write_memory_16(unsigned int address, unsigned int value)
 {
     unsigned int range = (address & 0xff0000) >> 16;
-    if (range == 0xa0) {
+    if (range == 0xa0)
+    {
         if (address >= 0x7F00 && address < 0x7F20)
-            vdp_write_memory_16(address &0xFFFF, value);
+            vdp_write_memory_16(address & 0xFFFF, value);
         z80_write_memory_16(address & 0x7FFF, value);
     }
     else if (range >= 0xc0 && range <= 0xdf)
@@ -262,7 +264,7 @@ void frame()
         int enable_planes = BIT(vdp_regs[1], 6);
         if (enable_planes)
             vdp_render_line(line); /* render line */
-            
+
         m68k_execute(104);
     }
     vdp_set_vblank();

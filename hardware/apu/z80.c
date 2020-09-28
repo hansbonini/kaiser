@@ -1,5 +1,5 @@
-#include "z80.h"
 #include <libs/Z80/Z80.h>
+#include "z80.h"
 
 #define M68K_FREQ_DIVISOR 7
 #define Z80_FREQ_DIVISOR 14
@@ -7,11 +7,85 @@
 int bus_ack = 0;
 int reset = 0;
 int zclk = 0;
+int initialized = 0;
 
 unsigned char *Z80_RAM;
 static Z80 cpu;
 
 void ResetZ80(register Z80 *R);
+
+/** DAsm() ***************************************************/
+/** DAsm() will disassemble the code at adress A and put    **/
+/** the output text into S. It will return the number of    **/
+/** bytes disassembled.                                     **/
+/*************************************************************/
+int DAsm(char *S,word A)
+{
+  char R[128],H[10],C,*P;
+  const char *T;
+  byte J,Offset;
+  word B;
+
+  Offset=0;
+  B=A;
+  C='\0';
+  J=0;
+
+  switch(RdZ80(B))
+  {
+    case 0xCB: B++;T=MnemonicsCB[RdZ80(B++)];break;
+    case 0xED: B++;T=MnemonicsED[RdZ80(B++)];break;
+    case 0xDD: B++;C='X';
+               if(RdZ80(B)!=0xCB) T=MnemonicsXX[RdZ80(B++)];
+               else
+               { B++;Offset=RdZ80(B++);J=1;T=MnemonicsXCB[RdZ80(B++)]; }
+               break;
+    case 0xFD: B++;C='Y';
+               if(RdZ80(B)!=0xCB) T=MnemonicsXX[RdZ80(B++)];
+               else
+               { B++;Offset=RdZ80(B++);J=1;T=MnemonicsXCB[RdZ80(B++)]; }
+               break;
+    default:   T=Mnemonics[RdZ80(B++)];
+  }
+
+  if(P=strchr(T,'^'))
+  {
+    strncpy(R,T,P-T);R[P-T]='\0';
+    sprintf(H,"%02X",RdZ80(B++));
+    strcat(R,H);strcat(R,P+1);
+  }
+  else strcpy(R,T);
+  if(P=strchr(R,'%')) *P=C;
+
+  if(P=strchr(R,'*'))
+  {
+    strncpy(S,R,P-R);S[P-R]='\0';
+    sprintf(H,"%02X",RdZ80(B++));
+    strcat(S,H);strcat(S,P+1);
+  }
+  else
+    if(P=strchr(R,'@'))
+    {
+      strncpy(S,R,P-R);S[P-R]='\0';
+      if(!J) Offset=RdZ80(B++);
+      strcat(S,Offset&0x80? "-":"+");
+      J=Offset&0x80? 256-Offset:Offset;
+      sprintf(H,"%02X",J);
+      strcat(S,H);strcat(S,P+1);
+    }
+    else
+      if(P=strchr(R,'#'))
+      {
+        strncpy(S,R,P-R);S[P-R]='\0';
+        sprintf(H,"%04X",RdZ80(B)+256*RdZ80(B+1));
+        strcat(S,H);strcat(S,P+1);
+        B+=2;
+      }
+      else strcpy(S,R);
+
+  return(B-A);
+}
+
 
 void z80_pulse_reset()
 {
@@ -37,6 +111,7 @@ void z80_execute(unsigned int target)
 void z80_set_memory(unsigned int *buffer)
 {
     Z80_RAM = buffer;
+    initialized = 1;
 }
 
 void z80_write_ctrl(unsigned int address, unsigned int value)
@@ -107,6 +182,25 @@ unsigned int z80_read_memory_16(unsigned int address)
     return (value << 8) | value;
 }
 
+unsigned int z80_disassemble(unsigned char *screen_buffer, unsigned int address) {
+    int pc;
+    pc = DAsm(screen_buffer, address);
+    return pc;
+}
+
+word z80_get_reg(int reg_i) {
+    switch(reg_i) {
+        case 0: return cpu.AF.W; break;
+        case 1: return cpu.BC.W; break;
+        case 2: return cpu.DE.W; break;
+        case 3: return cpu.HL.W; break;
+        case 4: return cpu.IX.W; break;
+        case 5: return cpu.IY.W; break;
+        case 6: return cpu.PC.W; break;
+        case 7: return cpu.SP.W; break;
+    }
+}
+
 word LoopZ80(register Z80 *R) {}
 byte RdZ80(register word Addr)
 {
@@ -119,3 +213,4 @@ void WrZ80(register word Addr, register byte Value)
 byte InZ80(register word Port) {}
 void OutZ80(register word Port, register byte Value) {}
 void PatchZ80(register Z80 *R) {}
+void DebugZ80(register Z80 *R) {}

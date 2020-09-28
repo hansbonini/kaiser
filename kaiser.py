@@ -46,10 +46,12 @@ for button, keys in keymap.items():
     keymap_r[keys[0]] = (button, 0)
     keymap_r[keys[1]] = (button, 1)
 
-# Define CPU registers
+# Define M68K registers
 registers = ['d0', 'd1', 'd2', 'd3', 'd4', 'd5', 'd6', 'd7',
              'a0', 'a1', 'a2', 'a3', 'a4', 'a5', 'a6', 'a7',
              'pc', 'sr', 'sp', 'usp']
+# Define Z80 registers
+z80_registers = ['af', 'bc', 'de', 'hl', 'ix', 'iy','pc','sp']
 
 # Allocate Screen and Scaled Screen Buffers
 screen_buffer = create_string_buffer(320*240*4)
@@ -253,7 +255,7 @@ class VramDebug(qtw.QWidget):
 
 class M68kDebug(qtw.QWidget):
     '''
-    A window that shows the current VRAM.
+    A window that shows the current M68k Disassembly.
     '''
 
     def __init__(self):
@@ -264,6 +266,7 @@ class M68kDebug(qtw.QWidget):
         self.width = 320                # Set Window Height
         self.log_size = 10              # Set log size
         self.pc = 0                     # Set CPU PC as 0
+        self.lines = []
 
         # CPU Disassembly as List
         self.m68k_debug_disassembly = qtw.QListWidget()
@@ -299,7 +302,7 @@ class M68kDebug(qtw.QWidget):
 
     def update(self):
         '''
-        Update disassembly and status of the M68K CPU
+        Update disassembly and status of the M68k CPU
         '''
         super().update()
         # Set current registers status
@@ -311,7 +314,7 @@ class M68kDebug(qtw.QWidget):
 
     def registers_status(self):
         '''
-        Get M68K Registers status.
+        Get M68k Registers status.
         '''
         # Define status empty
         status = ''
@@ -334,10 +337,10 @@ class M68kDebug(qtw.QWidget):
 
     def m68k_disassembly(self):
         '''
-        Get M68K Disassembly at current PC.
+        Get M68k Disassembly at current PC.
         '''
         # Defines lines as empty list
-        lines = []
+        self.lines = []
         # Iterate over log_size n lines
         for i in range(self.log_size):
             # Allocate disassembly buffer
@@ -360,6 +363,124 @@ class M68kDebug(qtw.QWidget):
             instruction += '[0x{:08x}]: {}'.format(
                 old_pc, disassembly.value.decode().lower())
             # Append disassembly in list
+            self.lines.append(instruction)
+        return self.lines
+
+    def get_pc(self):
+        '''
+            Get Current PC
+        '''
+        return self.pc
+
+class Z80Debug(qtw.QWidget):
+    '''
+    A window that shows the current Z80 Disassembly.
+    '''
+
+    def __init__(self):
+        super().__init__()
+        self.title = 'Z80 Debug'       # Set Widget's Title
+        self.setWindowTitle(self.title)
+        self.height = 400               # Set Window Width
+        self.width = 320                # Set Window Height
+        self.log_size = 10              # Set log size
+        self.pc = 0                     # Set CPU PC as 0
+
+        # CPU Disassembly as List
+        self.z80_debug_disassembly = qtw.QListWidget()
+        self.z80_debug_disassembly.maximumHeight = self.height
+        self.z80_debug_disassembly.maximumWidth = self.width
+        self.z80_debug_disassembly.font = qtg.QFont("Noto Sans Mono", 8)
+        self.z80_debug_disassembly.font.setStyleHint(qtg.QFont.TypeWriter)
+        self.z80_debug_disassembly.setFont(self.z80_debug_disassembly.font)
+
+        # CPU Register as Label
+        self.z80_regs_status = qtw.QLabel()
+        self.z80_regs_status.maximumHeight = 100
+        self.z80_regs_status.maximumWidth = self.width
+        self.z80_regs_status.font = qtg.QFont("Noto Sans Mono", 8)
+        self.z80_regs_status.font.setStyleHint(qtg.QFont.TypeWriter)
+        self.z80_regs_status.setFont(self.z80_regs_status.font)
+
+        # Define a Vertical Layout and add
+        # CPU Disassembly List and CPU Registers
+        self.box = qtw.QVBoxLayout()
+        self.box.addWidget(self.z80_debug_disassembly)
+        self.box.addWidget(self.z80_regs_status)
+
+        # Set Vertical Layout
+        self.setLayout(self.box)
+        # Set Window position and size
+        self.setGeometry(650, 0, self.width, self.height)
+        # Set size as fixed
+        self.setFixedSize(self.width, self.height)
+        # Update and Show
+        self.updateGeometry()
+        self.show()
+
+    def update(self):
+        '''
+        Update disassembly and status of the M68K CPU
+        '''
+        super().update()
+        # Set current registers status
+        self.z80_regs_status.setText(self.registers_status())
+        # Clear debug list and add new lines of disassembly
+        self.z80_debug_disassembly.clear()
+        for line in self.z80_disassembly():
+            self.z80_debug_disassembly.addItem(qtw.QListWidgetItem(line))
+
+    def registers_status(self):
+        '''
+        Get Z80 Registers status.
+        '''
+        # Define status empty
+        status = ''
+        # Define PC as 0
+        self.pc = 0
+        # Inspect M86K registers in registers list
+        for reg_i, register in enumerate(z80_registers):
+            # Break an line every 3 registers
+            if reg_i % 3 == 0:
+                status += '\n'
+            # Set register value
+            value = core.z80_get_reg(reg_i)
+            # Format register name and value as status
+            status += '{0}={1:08x} '.format(register, value & 0xffffffff)
+            # Define current M68K PC
+            if register == 'pc':
+                self.pc = value
+
+        return status
+
+    def z80_disassembly(self):
+        '''
+        Get Z80 Disassembly at current PC.
+        '''
+        # Defines lines as empty list
+        lines = []
+        # Iterate over log_size n lines
+        for i in range(self.log_size):
+            # Allocate disassembly buffer
+            disassembly = create_string_buffer(2048)
+            # Define current PC as old PC for reference
+            old_pc = self.pc
+            # Define instruction as empty
+            instruction = ''
+            # Get disassembly and save current Z80 PC
+            self.pc += core.z80_disassemble(disassembly, self.pc)
+            # Check if old PC is equal setted breakpoint and pause emulation
+            # in current instruction
+            # if old_pc == breakpoint and breakpoint_state:
+            #     global pause_emulation
+            #     pause_emulation = True
+            #     # add a flag at start of the string to identify current
+            #     # instruction
+            #     instruction += '> '
+            # Format disassembly and PC addr as string
+            instruction += '[0x{:08x}]: {}'.format(
+                old_pc, disassembly.value.decode().lower())
+            # Append disassembly in list
             lines.append(instruction)
         return lines
 
@@ -368,6 +489,7 @@ class M68kDebug(qtw.QWidget):
             Get Current PC
         '''
         return self.pc
+
 
 
 class BreakpointDebug(qtw.QWidget):
@@ -456,6 +578,7 @@ class Display(qtw.QWidget):
         self.cram_debug = CramDebug()
         self.vram_debug = VramDebug()
         self.m68k_debug = M68kDebug()
+        self.z80_debug =  Z80Debug()
         self.bp_debug = BreakpointDebug()
 
         # Set display placeholder
@@ -495,6 +618,7 @@ class Display(qtw.QWidget):
         menu_file = self.menubar.addMenu('&File')
         menu_options = self.menubar.addMenu('&Options')
         menu_dump = self.menubar.addMenu('&Dump')
+        menu_m68k = self.menubar.addMenu('&Debug')
         # Add child menus for File
         menu_file_open = qtw.QAction('Load Cartridge', self)
         menu_file_open.triggered.connect(self.load_cartridge)
@@ -529,6 +653,11 @@ class Display(qtw.QWidget):
         menu_dump_cram = qtw.QAction('Dump CRAM', self)
         menu_dump_cram.triggered.connect(lambda: self.cram_debug.dump())
         menu_dump.addAction(menu_dump_cram)
+        # Add child menus for M68k Debug
+        menu_m68k_step = qtw.QAction('Step Frame', self)
+        menu_m68k_step.triggered.connect(lambda: self.step_frame())
+        menu_m68k_step.setShortcut(qtg.QKeySequence(qt.Qt.Key_F7))
+        menu_m68k.addAction(menu_m68k_step)
 
     @qt.pyqtSlot()
     def quit(self):
@@ -646,6 +775,46 @@ class Display(qtw.QWidget):
             values.append('{:.1f}'.format(1000.0/sum(q)*l))
         return ' '.join(values)
 
+    def step_frame(self):
+        '''
+        Do a step frame.
+
+        Perform a Megadrive frame, upscale the screen if necessary.
+        Update debug information if debug is on.
+
+        Only executes if a cartridge is loaded
+        '''
+        if hasattr(self, 'cartridge'):
+            global cycle_counter
+            self.pause_emulation = True
+            core.frame()
+            self.frames+=1
+            # Update Debug Windows
+            self.cram_debug.update()
+            self.vram_debug.update()
+            self.m68k_debug.update()
+            self.z80_debug.update()
+
+            # Set scale filter as None and Zoom Level 1
+            core.scale_filter('None', 1)
+
+            # Blit Screen
+            blit_screen(self.label, scaled_buffer, 1)
+
+            # Adjust Display and MainWindow size
+            # for the new screen buffer
+            self.adjustSize()
+            self.parent.adjustSize()
+
+            # Append FPS to frame_times
+            self.frame_times.append(
+                self.last_fps_time.msecsTo(qt.QTime.currentTime()))
+            # Get current time of FPS check
+            self.last_fps_time = qt.QTime.currentTime()
+
+            cycle_counter = core.get_cycle_counter()
+            self.pause_emulation = True
+
     def frame(self):
         '''
         Do a single frame.
@@ -674,6 +843,7 @@ class Display(qtw.QWidget):
             self.cram_debug.update()
             self.vram_debug.update()
             self.m68k_debug.update()
+            self.z80_debug.update()
 
             # Set scale filter as None and Zoom Level 1
             core.scale_filter('None', 1)

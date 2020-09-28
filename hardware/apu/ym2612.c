@@ -4,7 +4,7 @@
 #define YM2612_RATE 53267
 #define YM2612_FREQ 0
 
-static ym3438_t ym_chip;
+unsigned char *audio;
 
 void ym2612_init() {
     OPN2_SetChipType(ym3438_mode_ym2612);
@@ -33,4 +33,13 @@ void ym2612_write_memory_16(unsigned int address, unsigned int value) {
     address &= 0x3;
     OPN2_Write(&ym_chip, address, value >> 8);
     OPN2_Write(&ym_chip, address+1, value &0xFF);
+}
+
+void ym2612_update() {
+    OPN2_GenerateStream(&ym_chip, audio, 2);
+}
+
+void ym2612_set_buffer(unsigned char *audio_buffer)
+{
+    audio = audio_buffer;
 }

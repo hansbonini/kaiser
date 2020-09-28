@@ -266,7 +266,7 @@ void m68k_write_memory_32(unsigned int address, unsigned int value)
  */
 void frame()
 {
-    extern unsigned char vdp_regs[0x20], *screen;
+    extern unsigned char vdp_regs[0x20], *screen, *audio;
     extern unsigned int vdp_status;
     extern int screen_width, screen_height;
     int hint_counter = vdp_regs[10];
@@ -280,6 +280,7 @@ void frame()
 
     vdp_clear_vblank();
     memset(screen, 0, 320 * 240 * 4); /* clear the screen before rendering */
+    memset(audio, 0, 1080 * 2); /* clear the audio before rendering */
 
     for (line = 0; line < screen_height; line++)
     {
@@ -326,6 +327,7 @@ void frame()
     {
         m68k_execute(3420); /**/
     }
+    ym2612_update();
 }
 
 unsigned int  m68k_read_disassembler_16(unsigned int address)

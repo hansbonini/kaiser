@@ -17,6 +17,7 @@ from PIL.ImageQt import ImageQt
 from PyQt5 import QtCore as qt
 from PyQt5 import QtWidgets as qtw
 from PyQt5 import QtGui as qtg
+from PyQt5 import QtMultimedia as qtm
 
 
 '''
@@ -56,6 +57,8 @@ z80_registers = ['af', 'bc', 'de', 'hl', 'ix', 'iy','pc','sp']
 # Allocate Screen and Scaled Screen Buffers
 screen_buffer = create_string_buffer(320*240*4)
 scaled_buffer = create_string_buffer(320*240*4)
+# Allocate Audio Stream
+audio_buffer = create_string_buffer(1080 * 2)
 # Define cycle_counter
 cycle_counter = 0
 # Define status bar as global
@@ -561,6 +564,7 @@ class Display(qtw.QWidget):
         self.turbo = False
         # Set screen buffers in VDP
         self.set_vdp_buffers()
+        self.set_audio_buffer()
         # Define frame elapsed times (fps) as deque
         self.frame_times = deque([20], 1000)
 
@@ -570,6 +574,19 @@ class Display(qtw.QWidget):
         timer.setInterval(16)
         timer.start()
         self.timer = timer
+
+        # audio_format = qtm.QAudioFormat();
+        # audio_format.setSampleSize(16)
+        # audio_format.setCodec("audio/pcm")
+        # audio_format.setByteOrder(qtm.QAudioFormat.BigEndian)
+        # audio_format.setSampleType(qtm.QAudioFormat.SignedInt)
+        # self.audio_output = qtm.QAudioOutput(audio_format, self)
+
+        # Play audio
+        # sample = qt.QBuffer()
+        # sample.setData(audio_buffer.raw)
+        # self.audio_output.start(sample)
+        # print(audio_buffer[1])
 
         # Define last_fps_time as current time in timer
         self.last_fps_time = qt.QTime.currentTime()
@@ -679,6 +696,14 @@ class Display(qtw.QWidget):
         scaled_buffer = create_string_buffer(
             320*240*4)
         core.vdp_set_buffers(screen_buffer, scaled_buffer)
+
+    def set_audio_buffer(self):
+        '''
+        Allocate buffer for audio Stream.
+        '''
+        global audio_buffer
+        audio_buffer = create_string_buffer(1080 * 2)
+        core.ym2612_set_buffer(audio_buffer)
 
     @qt.pyqtSlot()
     def load_cartridge(self):
@@ -800,6 +825,9 @@ class Display(qtw.QWidget):
 
             # Blit Screen
             blit_screen(self.label, scaled_buffer, 1)
+
+            # Play audio
+            self.audio_output.play(audio_buffer)
 
             # Adjust Display and MainWindow size
             # for the new screen buffer

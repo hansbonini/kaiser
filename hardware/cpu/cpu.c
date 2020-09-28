@@ -67,10 +67,10 @@ unsigned int map_address(unsigned int address)
         /* ROM */
         return ROM_ADDR;
     }
-    //else if (range >= 0x40 && range < 0x7F) {
-    //    /* ROM MIRROR */
-    //    return ROM_MIRRORED_ADDR;
-    //}
+    // else if (range >= 0x40 && range < 0x7F) {
+    //     /* ROM MIRROR */
+    //     return ROM_MIRRORED_ADDR;
+    // }
     else if (range == 0xa0)
     {
         /* Z80 RAM */
@@ -118,6 +118,8 @@ unsigned int read_memory(unsigned int address)
         printf('mirror read(%x)\n', mirror_address);
         return ROM[mirror_address];
     case Z80_ADDR:
+        if (address >= 0x4000 && address < 0x5FFF)
+            return ym2612_read_memory_8(address & 0xFFFF);
         if (address >= 0x7F00 && address < 0x7F20)
             return vdp_read_memory_8(address & 0xFFFF);
         if (address >= 0x8000 && address < 0xFFFF)
@@ -144,6 +146,10 @@ void write_memory(unsigned int address, unsigned int value)
         ROM[address] = value;
         return;
     case Z80_ADDR:
+        if (address >= 0x4000 && address < 0x5FFF) {
+            ym2612_write_memory_8(address & 0xFFFF, value);
+            return;
+        }
         if (address >= 0x7F00 && address < 0x7F20) {
             vdp_write_memory_8(address & 0x7FFF, value);
             return;
@@ -180,6 +186,8 @@ unsigned int m68k_read_memory_16(unsigned int address)
     unsigned int range = (address & 0xff0000) >> 16;
     if (range == 0xa0)
     {
+        if (address >= 0x4000 && address < 0x5FFF)
+            return ym2612_read_memory_16(address & 0xFFFF);
         if (address >= 0x7F00 && address < 0x7F20)
             return vdp_read_memory_16(address & 0xFFFF);
         if (address >= 0x8000 && address < 0xFFFF)
@@ -215,6 +223,10 @@ void m68k_write_memory_16(unsigned int address, unsigned int value)
     unsigned int range = (address & 0xff0000) >> 16;
     if (range == 0xa0)
     {
+        if (address >= 0x4000 && address < 0x5FFF) {
+            ym2612_write_memory_16(address & 0xFFFF, value);
+            return;
+        }
         if (address >= 0x7F00 && address < 0x7F20) {
             vdp_write_memory_16(address & 0xFFFF, value);
             return;

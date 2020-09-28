@@ -178,11 +178,12 @@ unsigned int z80_read_memory_8(unsigned int address)
 void z80_write_memory_16(unsigned int address, unsigned int value)
 {
     WrZ80(address, value >> 8);
+    WrZ80(address+1, value &0xFF);
 }
 unsigned int z80_read_memory_16(unsigned int address)
 {
-    unsigned int value = RdZ80(address);
-    return (value << 8) | value;
+    unsigned int value = RdZ80(address) << 8 | RdZ80(address);
+    return value;
 }
 
 unsigned int z80_disassemble(unsigned char *screen_buffer, unsigned int address) {

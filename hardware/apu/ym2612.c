@@ -23,3 +23,14 @@ void ym2612_write_memory_8(unsigned int address, unsigned int value) {
     address &= 0x3;
     OPN2_Write(&ym_chip, address, value);
 }
+
+unsigned int ym2612_read_memory_16(unsigned int address) {
+    unsigned int value = OPN2_Read(&ym_chip, address) << 8 | OPN2_Read(&ym_chip, address+1);
+    return value;
+}
+
+void ym2612_write_memory_16(unsigned int address, unsigned int value) {
+    address &= 0x3;
+    OPN2_Write(&ym_chip, address, value >> 8);
+    OPN2_Write(&ym_chip, address+1, value &0xFF);
+}

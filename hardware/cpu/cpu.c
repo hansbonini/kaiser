@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "libs/Musashi/m68k.h"
+#include "hardware/apu/ym2612.h"
 #include "hardware/apu/z80.h"
 #include "hardware/vdp/VDP.h"
 #include "hardware/io/input.h"
@@ -42,13 +43,16 @@ void load_cartridge(unsigned char *buffer, size_t size)
 }
 void power_on()
 {
+    m68k_set_cpu_type(M68K_CPU_TYPE_68000);
     m68k_init();
-    m68k_set_cpu_type(M68K_CPU_TYPE_68010);
+    z80_init();
+    ym2612_init();
 }
 void reset_emulation(unsigned char *buffer, size_t size)
 {
     z80_pulse_reset();
     m68k_pulse_reset();
+    ym2612_pulse_reset();
 }
 unsigned int get_cycle_counter()
 {
@@ -116,6 +120,8 @@ unsigned int read_memory(unsigned int address)
     case Z80_ADDR:
         if (address >= 0x7F00 && address < 0x7F20)
             return vdp_read_memory_8(address & 0xFFFF);
+        if (address >= 0x8000 && address < 0xFFFF)
+            return ROM[address];
         return z80_read_memory_8(address & 0x7FFF);
     case IO_CTRL:
         return io_read_memory(address & 0x1F);
@@ -138,6 +144,14 @@ void write_memory(unsigned int address, unsigned int value)
         ROM[address] = value;
         return;
     case Z80_ADDR:
+        if (address >= 0x7F00 && address < 0x7F20) {
+            vdp_write_memory_8(address & 0x7FFF, value);
+            return;
+        }
+        if (address >= 0x8000 && address < 0xFFFF) {
+            ROM[address] = (value &0xFF);
+            return;
+        }
         z80_write_memory_8(address & 0x1FFF, value);
         return;
     case IO_CTRL:
@@ -168,6 +182,8 @@ unsigned int m68k_read_memory_16(unsigned int address)
     {
         if (address >= 0x7F00 && address < 0x7F20)
             return vdp_read_memory_16(address & 0xFFFF);
+        if (address >= 0x8000 && address < 0xFFFF)
+            return ((ROM[address] << 8) &0xFF) | (ROM[address] &0xFF);
         return z80_read_memory_16(address & 0x7FFF);
     }
     if (range >= 0xc0 && range <= 0xdf)
@@ -199,19 +215,30 @@ void m68k_write_memory_16(unsigned int address, unsigned int value)
     unsigned int range = (address & 0xff0000) >> 16;
     if (range == 0xa0)
     {
-        if (address >= 0x7F00 && address < 0x7F20)
+        if (address >= 0x7F00 && address < 0x7F20) {
             vdp_write_memory_16(address & 0xFFFF, value);
-        z80_write_memory_16(address & 0x7FFF, value);
+            return;
+        }
+       if (address >= 0x8000 && address < 0xFFFF) {
+            ROM[address] = ((value << 8) &0xFF);
+            ROM[address+1] = (value &0xFF);
+            return;
+        }
+        z80_write_memory_16(address & 0x1FFF, value);
+        return;
     }
     else if (range >= 0xc0 && range <= 0xdf)
     {
         vdp_write_memory_16(address, value);
+        return;
     }
     else
     {
         write_memory(address, (value >> 8) & 0xff);
         write_memory(address + 1, (value)&0xff);
+        return;
     }
+    return;
 }
 void m68k_write_memory_32(unsigned int address, unsigned int value)
 {
@@ -287,4 +314,13 @@ void frame()
     {
         m68k_execute(3420); /**/
     }
+}
+
+unsigned int  m68k_read_disassembler_16(unsigned int address)
+{
+    return m68k_read_memory_16(address);
+}
+unsigned int  m68k_read_disassembler_32(unsigned int address)
+{
+    return m68k_read_memory_32(address);
 }

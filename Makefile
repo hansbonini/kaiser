@@ -19,15 +19,19 @@ endif
 all: core.so
 
 clean:
-	rm core.so libs/Musashi/*.o libs/Musashi/softfloat/*.o libs/Musashi/m68kops.h libs/Musashi/m68kmake hardware/apu/*.o hardware/cpu/*.o hardware/io/*.o hardware/filters/*.o hardware/vdp/*.o libs/hqx/src/*.o libs/Z80/*.o 
+	rm core.so libs/Musashi/*.o libs/Musashi/softfloat/*.o libs/Musashi/m68kops.h libs/Musashi/m68kmake hardware/apu/*.o hardware/cpu/*.o hardware/io/*.o hardware/filters/*.o hardware/vdp/*.o libs/hqx/src/*.o libs/Z80/*.o libs/NukedOPN2/ym3438.o
 
-core.so: libs/Musashi/m68kcpu.o libs/Musashi/m68kops.o libs/Musashi/m68kdasm.o libs/Musashi/softfloat/softfloat.o hardware/cpu/cpu.o hardware/vdp/vdp.o hardware/io/input.o hardware/filters/scale.o hardware/apu/z80.o libs/hqx/src/init.o libs/hqx/src/hq2x.o libs/hqx/src/hq3x.o libs/hqx/src/hq4x.o libs/Z80/Z80.o
+core.so: libs/Musashi/m68k.h libs/Musashi/m68kcpu.o libs/Musashi/m68kops.o libs/Musashi/m68kdasm.o libs/Musashi/softfloat/softfloat.o hardware/cpu/cpu.o hardware/vdp/vdp.o hardware/io/input.o hardware/filters/scale.o hardware/apu/z80.o hardware/apu/ym2612.o libs/hqx/src/init.o libs/hqx/src/hq2x.o libs/hqx/src/hq3x.o libs/hqx/src/hq4x.o libs/Z80/Z80.o libs/NukedOPN2/ym3438.o
 		@echo "Linking core.so"
-		@$(CC) libs/Musashi/m68kcpu.o libs/Musashi/m68kops.o libs/Musashi/m68kdasm.o libs/Musashi/softfloat/softfloat.o hardware/cpu/cpu.o hardware/vdp/vdp.o hardware/io/input.o hardware/filters/scale.o hardware/apu/z80.o libs/hqx/src/init.o libs/hqx/src/hq2x.o libs/hqx/src/hq3x.o libs/hqx/src/hq4x.o libs/Z80/Z80.o $(LDFLAGS) -o core.so
+		@$(CC) libs/Musashi/m68kcpu.o libs/Musashi/m68kops.o libs/Musashi/m68kdasm.o libs/Musashi/softfloat/softfloat.o hardware/cpu/cpu.o hardware/vdp/vdp.o hardware/io/input.o hardware/filters/scale.o hardware/apu/z80.o hardware/apu/ym2612.o libs/hqx/src/init.o libs/hqx/src/hq2x.o libs/hqx/src/hq3x.o libs/hqx/src/hq4x.o libs/Z80/Z80.o libs/NukedOPN2/ym3438.o $(LDFLAGS) -o core.so
 
 %.o: %.c
 		@echo "Compiling $<"
 		$(CC) $(CFLAGS) $^ -std=c99 -o $@
+
+libs/NukedOPN2/ym3438.o: libs/NukedOPN2/ym3438.c
+		@echo "Compiling libs/NukedOPN2/ym3438.c"
+		$(CC) $(CFLAGS_M68K) libs/NukedOPN2/ym3438.c -o libs/NukedOPN2/ym3438.o
 
 libs/Z80/Z80.o: libs/Z80/Codes.h libs/Z80/CodesED.h libs/Z80/CodesCB.h libs/Z80/CodesXX.h libs/Z80/Tables.h libs/Z80/CodesXCB.h libs/Z80/Z80.h libs/Z80/Debug.c libs/Z80/Z80.c
 		@echo "Compiling libs/Z80/Z80.c"

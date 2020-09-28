@@ -1,8 +1,8 @@
 #include <libs/Z80/Z80.h>
 #include "z80.h"
 
-#define M68K_FREQ_DIVISOR 7
-#define Z80_FREQ_DIVISOR 14
+#define M68K_FREQ_DIVISOR   7
+#define Z80_FREQ_DIVISOR    14
 
 int bus_ack = 0;
 int reset = 0;
@@ -86,13 +86,16 @@ int DAsm(char *S,word A)
   return(B-A);
 }
 
-
-void z80_pulse_reset()
-{
+void z80_init() {
     cpu.IPeriod = 1;
     cpu.ICount = 0;
     cpu.Trace = 0;
     cpu.Trap = 0x0009;
+    ResetZ80(&cpu);
+}
+
+void z80_pulse_reset()
+{
     ResetZ80(&cpu);
 }
 

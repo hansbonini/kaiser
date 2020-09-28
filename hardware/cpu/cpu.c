@@ -306,6 +306,7 @@ void frame()
             vdp_render_line(line); /* render line */
 
         m68k_execute(104);
+        ym2612_update();
     }
     vdp_set_vblank();
 
@@ -327,7 +328,6 @@ void frame()
     {
         m68k_execute(3420); /**/
     }
-    ym2612_update();
 }
 
 unsigned int  m68k_read_disassembler_16(unsigned int address)

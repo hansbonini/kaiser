@@ -575,19 +575,14 @@ class Display(qtw.QWidget):
         timer.start()
         self.timer = timer
 
-        # audio_format = qtm.QAudioFormat();
-        # audio_format.setSampleSize(16)
-        # audio_format.setCodec("audio/pcm")
-        # audio_format.setByteOrder(qtm.QAudioFormat.BigEndian)
-        # audio_format.setSampleType(qtm.QAudioFormat.SignedInt)
-        # self.audio_output = qtm.QAudioOutput(audio_format, self)
-
-        # Play audio
-        # sample = qt.QBuffer()
-        # sample.setData(audio_buffer.raw)
-        # self.audio_output.start(sample)
-        # print(audio_buffer[1])
-
+        audio_format = qtm.QAudioFormat();
+        audio_format.setSampleSize(16)
+        audio_format.setCodec("audio/pcm")
+        audio_format.setByteOrder(qtm.QAudioFormat.BigEndian)
+        audio_format.setSampleType(qtm.QAudioFormat.SignedInt)
+        self.audio_output = qtm.QAudioOutput(audio_format, self)
+        self.sample = qt.QBuffer()
+        self.audio_output.start(self.sample)
         # Define last_fps_time as current time in timer
         self.last_fps_time = qt.QTime.currentTime()
 
@@ -878,6 +873,10 @@ class Display(qtw.QWidget):
 
             # Blit Screen
             blit_screen(self.label, scaled_buffer, 1)
+
+            # Play audio
+            self.sample.setData(audio_buffer.raw)
+            #print(audio_buffer[1])
 
             # Adjust Display and MainWindow size
             # for the new screen buffer

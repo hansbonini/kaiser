@@ -5,6 +5,7 @@
 #define YM2612_FREQ 0
 
 unsigned char *audio;
+static ym3438_t ym_chip;
 
 void ym2612_init() {
     OPN2_SetChipType(ym3438_mode_ym2612);
@@ -36,7 +37,7 @@ void ym2612_write_memory_16(unsigned int address, unsigned int value) {
 }
 
 void ym2612_update() {
-    OPN2_GenerateStream(&ym_chip, audio, 2);
+    //OPN2_GenerateStream(&ym_chip, audio, 24);
 }
 
 void ym2612_set_buffer(unsigned char *audio_buffer)

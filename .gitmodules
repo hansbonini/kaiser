@@ -4,3 +4,6 @@
 [submodule "libs/Musashi"]
 	path = libs/Musashi
 	url = https://github.com/kstenerud/Musashi.git
+[submodule "libs/NukedOPN2"]
+	path = libs/NukedOPN2
+	url = https://github.com/nukeykt/Nuked-OPN2.git

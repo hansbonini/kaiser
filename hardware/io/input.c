@@ -17,6 +17,7 @@ enum pad_button
     PAD_S
 };
 
+int tmss_count=0;
 unsigned short button_state[3];
 unsigned short pad_state[3];
 unsigned char io_reg[16] = {0xa0, 0x7f, 0x7f, 0x7f, 0, 0, 0, 0xff, 0, 0, 0xff, 0, 0, 0xff, 0, 0}; /* initial state */
@@ -61,6 +62,20 @@ void io_write_memory(unsigned int address, unsigned int value)
 {
     address >>= 1;
 
+    if (address == 0xC || address == 0x9 || address == 0xF ) {
+        switch(tmss_count) {
+            case 0: return 0x53;
+            case 1: return 0x45;
+            case 2: return 0x47;
+            case 3: return 0x51;
+        }
+        tmss_count++;
+        if (tmss_count == 4)
+            tmss_count=0;
+            z80_write_ctrl(0x1100,0);
+            z80_write_ctrl(0x1200,1);
+            z80_pulse_reset();
+    }
     if (address >= 0x1 && address < 0x4)
     {
         /* port data */

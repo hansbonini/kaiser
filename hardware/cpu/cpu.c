@@ -6,125 +6,191 @@
 #include "hardware/vdp/VDP.h"
 #include "hardware/io/input.h"
 
-/*
- * Megadrive memory map as well as main execution loop.
- */
+#define MAX_ROM_SIZE 0x400000   // ROM maximum size
+#define MAX_RAM_SIZE 0x10000    // RAM maximum size
+#define MAX_Z80_RAM_SIZE 0x8000 // ZRAM maximum size
+#define MCLOCK_NTSC 53693175    // NTSC CLOCK
 
-unsigned char ROM[0x400000];
-unsigned char RAM[0x10000];
-unsigned char ZRAM[0x8000];
+// Setup CPU Memory
+unsigned char ROM[MAX_ROM_SIZE];      // 68K Main Program
+unsigned char RAM[MAX_RAM_SIZE];      // 68K RAM
+unsigned char ZRAM[MAX_Z80_RAM_SIZE]; // Z80 RAM
 
-const int MCLOCK_NTSC = 53693175;
-const int MCYCLES_PER_LINE = 3420;
-
-int lines_per_frame = 262; /* NTSC: 262, PAL: 313 */
+// Define default number of lines per frame
+int lines_per_frame = 262; // NTSC: 262 lines
+                           // PAL: 313 lines
+// Define cycle counter
 unsigned int *cycle_counter;
 
+/******************************************************************************
+ * 
+ *   Define MAIN MEMORY address regions         
+ * 
+ ******************************************************************************/
 enum mapped_address
 {
-    ROM_ADDR = 1,
-    ROM_MIRRORED_ADDR,
-    Z80_ADDR,
+    NONE = 0,
+    ROM_ADDR,
+    ROM_ADDR_MIRROR,
+    Z80_RAM_ADDR,
+    YM2612_ADDR,
+    Z80_BANK_ADDR,
+    Z80_VDP_ADDR,
+    Z80_ROM_ADDR,
     IO_CTRL,
     Z80_CTRL,
     VDP_ADDR,
     RAM_ADDR
 };
 
+/******************************************************************************
+ * 
+ *   Load a Sega Genesis Cartridge into CPU Memory              
+ * 
+ ******************************************************************************/
 void load_cartridge(unsigned char *buffer, size_t size)
 {
-    memset(ROM, 0, 0x100000);
-    memset(RAM, 0, 0x10000);
-    memset(ZRAM, 0, 0x8000);
+    // Clear all volatile memory
+    memset(ROM, 0, MAX_ROM_SIZE);
+    memset(RAM, 0, MAX_RAM_SIZE);
+    memset(ZRAM, 0, MAX_Z80_RAM_SIZE);
+
+    // Set Z80 program as ZRAM
     z80_set_memory(ZRAM);
+
+    // Clear VDP RAM
     vdp_clear_memory();
 
+    // Copy file contents to CPU ROM memory
     memcpy(ROM, buffer, size);
 }
+
+/******************************************************************************
+ * 
+ *   Power ON the CPU
+ *   Initialize 68K, Z80 and YM2612 Cores             
+ * 
+ ******************************************************************************/
 void power_on()
 {
+    // Set M68K CPU as original MOTOROLA 68000
     m68k_set_cpu_type(M68K_CPU_TYPE_68000);
+
+    // Initialize M68K CPU
     m68k_init();
+    // Initialize Z80 CPU
     z80_init();
+    // Initialize YM2612 chip
     ym2612_init();
 }
+
+/******************************************************************************
+ * 
+ *   Reset the CPU Emulation
+ *   Send a pulse reset to 68K, Z80 and YM2612 Cores             
+ * 
+ ******************************************************************************/
 void reset_emulation(unsigned char *buffer, size_t size)
 {
+    // Send a reset pulse to Z80 CPU
     z80_pulse_reset();
+    // Send a reset pulse to Z80 M68K
     m68k_pulse_reset();
+    // Send a reset pulse to YM2612 chip
     ym2612_pulse_reset();
 }
-unsigned int get_cycle_counter()
-{
-    return m68k_cycles_run();
-}
-unsigned int map_address(unsigned int address)
-{
-    unsigned int range = (address & 0xff0000) >> 16;
 
-    if (range <= 0x3f)
-    {
-        /* ROM */
-        return ROM_ADDR;
-    }
-    // else if (range >= 0x40 && range < 0x7F) {
-    //     /* ROM MIRROR */
-    //     return ROM_MIRRORED_ADDR;
-    // }
-    else if (range == 0xa0)
-    {
-        /* Z80 RAM */
-        if (address >= 0xa00000 && address < 0xa08000)
-        {
-            return Z80_ADDR;
-        }
-        return 0;
-    }
-    else if (range == 0xa1)
-    {
-        /* I/O and registers */
-        if (address >= 0xa10000 && address < 0xa10020)
-        {
-            return IO_CTRL;
-        }
-        else if (address >= 0xa11100 && address < 0xa11300)
-        {
-            return Z80_CTRL;
-        }
-        return 0;
-    }
-    else if (range >= 0xc0 && range <= 0xdf)
-    {
-        /* VDP*/
-        return VDP_ADDR;
-    }
-    else if (range >= 0xe0 && range <= 0xff)
-    {
-        /* RAM */
-        return RAM_ADDR;
-    }
-
+/******************************************************************************
+ * 
+ *   Main memory address mapper
+ *   Map all main memory region address for CPU program             
+ * 
+ ******************************************************************************/
+unsigned int map_z80_address(unsigned int address)
+{
+    unsigned int range = address & 0xFFFF;
+    if (range >= 0x0000 && range <= 0x1FFF) // Z80 RAM ADDRESS 0x0000 - 0x1FFF
+        return Z80_RAM_ADDR;
+    if (range >= 0x4000 && range <= 0x5FFF) // YM2612 ADDRESS  0x4000 - 0x5FFF
+        return YM2612_ADDR;
+    if (range >= 0x7F00 && range <= 0x7F1F) // Z80 VDP ADDRESS 0x7F00 - 0x7F1F
+        return Z80_VDP_ADDR;
+    if (range >= 0x8000 && range <= 0xFFFF) // Z80 ROM ADDRESS 0x8000 - 0xFFFF
+        return Z80_ROM_ADDR;
+    // If not a valid address return 0
     return 0;
 }
+
+/******************************************************************************
+ * 
+ *   IO memory address mapper
+ *   Map all input/output region address for CPU program             
+ * 
+ ******************************************************************************/
+unsigned int map_io_address(unsigned int address)
+{
+    unsigned int range = address & 0xFFFF;
+    if (address >= 0xa10000 && address < 0xa10020) // I/O and registers
+        return IO_CTRL;
+    else if (address >= 0xa11100 && address < 0xa11300) // Z80 Reset & BUS
+        return Z80_CTRL;
+    // If not a valid address return 0
+    return 0;
+}
+
+/******************************************************************************
+ * 
+ *   Main memory address mapper
+ *   Map all main memory region address for CPU program             
+ * 
+ ******************************************************************************/
+unsigned int map_address(unsigned int address)
+{
+    // Mask address page
+    unsigned int range = (address & 0xFF0000) >> 16;
+
+    // Check mask and select memory type
+    if (range < 0x40) //                        ROM ADDRESS 0x000000 - 0x3FFFFF
+        return ROM_ADDR;
+    else if (range >= 0x40 && range <= 0x9F)
+        return ROM_ADDR_MIRROR;
+    else if (range == 0xA0) //                  Z80 ADDRESS 0xA00000 - 0xA0FFFF
+        return map_z80_address(address);
+    else if (range == 0xA1) //                  IO ADDRESS  0xA10000 - 0xA1FFFF
+        return map_io_address(address);
+    else if (range >= 0xC0 && range <= 0xDF) // VDP ADDRESS 0xC00000 - 0xDFFFFFF
+        return VDP_ADDR;
+    else if (range >= 0xE0 && range <= 0xFF) // RAM ADDRESS 0xE00000 - 0xFFFFFFF
+        return RAM_ADDR;
+    // If not a valid address return 0
+    return 0;
+}
+
+/******************************************************************************
+ * 
+ *   Main read address routine
+ *   Read an address from memory mapped and return a value 
+ * 
+ ******************************************************************************/
 unsigned int read_memory(unsigned int address)
 {
-    int mirror_mask = (address & 0xFF0000) >> 16;
-    int mirror_address = address / (mirror_mask / 2);
+    int mirror_address = address % 0x400000;
     switch (map_address(address))
     {
+    case NONE:
+        return 0;
+    case ROM_ADDR_MIRROR:
+        return ROM[mirror_address];
     case ROM_ADDR:
         return ROM[address];
-    case ROM_MIRRORED_ADDR:
-        printf('mirror read(%x)\n', mirror_address);
-        return ROM[mirror_address];
-    case Z80_ADDR:
-        if (address >= 0x4000 && address < 0x5FFF)
-            return ym2612_read_memory_8(address & 0xFFFF);
-        if (address >= 0x7F00 && address < 0x7F20)
-            return vdp_read_memory_8(address & 0xFFFF);
-        if (address >= 0x8000 && address < 0xFFFF)
-            return ROM[address];
+    case Z80_RAM_ADDR:
         return z80_read_memory_8(address & 0x7FFF);
+    case YM2612_ADDR:
+        return ym2612_read_memory_8(address & 0xFFFF);
+    case Z80_VDP_ADDR:
+        return vdp_read_memory_8(address & 0xFFFF);
+    case Z80_ROM_ADDR:
+        return ROM[address];
     case IO_CTRL:
         return io_read_memory(address & 0x1F);
     case Z80_CTRL:
@@ -138,27 +204,34 @@ unsigned int read_memory(unsigned int address)
     }
     return 0;
 }
+
+/******************************************************************************
+ * 
+ *   Main write address routine
+ *   Write an value to memory mapped on specified address 
+ * 
+ ******************************************************************************/
 void write_memory(unsigned int address, unsigned int value)
 {
+    int mirror_address = address % 0x400000;
     switch (map_address(address))
     {
     case ROM_ADDR:
         ROM[address] = value;
         return;
-    case Z80_ADDR:
-        if (address >= 0x4000 && address < 0x5FFF) {
-            ym2612_write_memory_8(address & 0xFFFF, value);
-            return;
-        }
-        if (address >= 0x7F00 && address < 0x7F20) {
-            vdp_write_memory_8(address & 0x7FFF, value);
-            return;
-        }
-        if (address >= 0x8000 && address < 0xFFFF) {
-            ROM[address] = (value &0xFF);
-            return;
-        }
+    case ROM_ADDR_MIRROR:
+        ROM[mirror_address] = value;
+        return;
+    case Z80_RAM_ADDR:
         z80_write_memory_8(address & 0x1FFF, value);
+        return;
+    case YM2612_ADDR:
+        ym2612_write_memory_8(address & 0xFFFF, value);
+        return;
+    case Z80_VDP_ADDR:
+        vdp_write_memory_8(address & 0x7FFF, value);
+    case Z80_ROM_ADDR:
+        ROM[address] = (value & 0xFF);
         return;
     case IO_CTRL:
         io_write_memory(address & 0x1F, value);
@@ -175,35 +248,59 @@ void write_memory(unsigned int address, unsigned int value)
     default:
         printf("write(%x, %x)\n", address, value);
     }
-    return 0;
+    return;
 }
+
+/******************************************************************************
+ * 
+ *   68K CPU read address R8
+ *   Read an address from memory mapped and return value as byte
+ * 
+ ******************************************************************************/
 unsigned int m68k_read_memory_8(unsigned int address)
 {
     return read_memory(address);
 }
+
+/******************************************************************************
+ * 
+ *   68K CPU read address R16
+ *   Read an address from memory mapped and return value as word
+ * 
+ ******************************************************************************/
 unsigned int m68k_read_memory_16(unsigned int address)
 {
-    unsigned int range = (address & 0xff0000) >> 16;
-    if (range == 0xa0)
+    unsigned int w;
+    int mirror_address = address % 0x400000;
+    switch (map_address(address))
     {
-        if (address >= 0x4000 && address < 0x5FFF)
-            return ym2612_read_memory_16(address & 0xFFFF);
-        if (address >= 0x7F00 && address < 0x7F20)
-            return vdp_read_memory_16(address & 0xFFFF);
-        if (address >= 0x8000 && address < 0xFFFF)
-            return ((ROM[address] << 8) &0xFF) | (ROM[address] &0xFF);
+    case NONE:
+        return 0;
+    case ROM_ADDR_MIRROR:
+        return (ROM[mirror_address] << 8) | ROM[mirror_address + 1];
+    case Z80_RAM_ADDR:
         return z80_read_memory_16(address & 0x7FFF);
-    }
-    if (range >= 0xc0 && range <= 0xdf)
-    {
+    case YM2612_ADDR:
+        return ym2612_read_memory_16(address & 0xFFFF);
+    case Z80_VDP_ADDR:
         return vdp_read_memory_16(address);
+    case Z80_ROM_ADDR:
+        return ((ROM[address] << 8) & 0xFF) | (ROM[address] & 0xFF);
+    case VDP_ADDR:
+        return vdp_read_memory_16(address);
+    default:
+        w = (read_memory(address) << 8) | read_memory(address + 1);
+        return w;
     }
-    else
-    {
-        unsigned int word = read_memory(address) << 8 | read_memory(address + 1);
-        return word;
-    }
+    return 0;
 }
+
+/******************************************************************************
+ * 
+ *   68K CPU read address R32
+ *   Read an address from memory mapped and return value as long
+ * 
+ ******************************************************************************/
 unsigned int m68k_read_memory_32(unsigned int address)
 {
     unsigned int longword = read_memory(address) << 24 |
@@ -212,46 +309,69 @@ unsigned int m68k_read_memory_32(unsigned int address)
                             read_memory(address + 3);
     return longword;
 }
+
+/******************************************************************************
+ * 
+ *   68K CPU write address W8
+ *   Write an value as byte to memory mapped on specified address
+ * 
+ ******************************************************************************/
 void m68k_write_memory_8(unsigned int address, unsigned int value)
 {
     write_memory(address, value);
 
     return;
 }
+
+/******************************************************************************
+ * 
+ *   68K CPU write address W16
+ *   Write an value as word to memory mapped on specified address
+ * 
+ ******************************************************************************/
 void m68k_write_memory_16(unsigned int address, unsigned int value)
 {
-    unsigned int range = (address & 0xff0000) >> 16;
-    if (range == 0xa0)
+    int mirror_address = address % 0x400000;
+    unsigned int w;
+    switch (map_address(address))
     {
-        if (address >= 0x4000 && address < 0x5FFF) {
-            ym2612_write_memory_16(address & 0xFFFF, value);
-            return;
-        }
-        if (address >= 0x7F00 && address < 0x7F20) {
-            vdp_write_memory_16(address & 0xFFFF, value);
-            return;
-        }
-       if (address >= 0x8000 && address < 0xFFFF) {
-            ROM[address] = ((value << 8) &0xFF);
-            ROM[address+1] = (value &0xFF);
-            return;
-        }
+    case NONE:
+        return;
+    case ROM_ADDR_MIRROR:
+        ROM[mirror_address] = value << 8;
+        ROM[mirror_address + 1] = value & 0xFF;
+        return;
+    case Z80_RAM_ADDR:
         z80_write_memory_16(address & 0x1FFF, value);
         return;
-    }
-    else if (range >= 0xc0 && range <= 0xdf)
-    {
+    case YM2612_ADDR:
+        ym2612_write_memory_16(address & 0xFFFF, value);
+        return;
+    case Z80_VDP_ADDR:
         vdp_write_memory_16(address, value);
         return;
-    }
-    else
-    {
+    case Z80_ROM_ADDR:
+        ROM[address] = ((value << 8) & 0xFF);
+        ROM[address + 1] = (value & 0xFF);
+        return;
+    case VDP_ADDR:
+        vdp_write_memory_16(address, value);
+        return;
+    default:
         write_memory(address, (value >> 8) & 0xff);
         write_memory(address + 1, (value)&0xff);
+        w = value;
         return;
     }
     return;
 }
+
+/******************************************************************************
+ * 
+ *   68K CPU write address W32
+ *   Write an value as word to memory mapped on specified address
+ * 
+ ******************************************************************************/
 void m68k_write_memory_32(unsigned int address, unsigned int value)
 {
     m68k_write_memory_16(address, (value >> 16) & 0xffff);
@@ -260,10 +380,13 @@ void m68k_write_memory_32(unsigned int address, unsigned int value)
     return;
 }
 
-/*
- * The Megadrive frame, called every 1/60th second 
- * (or 1/50th in PAL mode)
- */
+/******************************************************************************
+ * 
+ *   68K CPU Main Loop
+ *   Perform a frame which is called every 1/60th second on NTSC
+ *   and called every 1/50th on PAL
+ * 
+ ******************************************************************************/
 void frame()
 {
     extern unsigned char vdp_regs[0x20], *screen, *audio;
@@ -279,8 +402,9 @@ void frame()
     screen_height = (vdp_regs[1] & 0x08) ? 240 : 224;
 
     vdp_clear_vblank();
+
     memset(screen, 0, 320 * 240 * 4); /* clear the screen before rendering */
-    memset(audio, 0, 1080 * 2); /* clear the audio before rendering */
+    memset(audio, 0, 1080 * 2);       /* clear the audio before rendering */
 
     for (line = 0; line < screen_height; line++)
     {
@@ -305,8 +429,8 @@ void frame()
         if (enable_planes)
             vdp_render_line(line); /* render line */
 
-        m68k_execute(104);
         ym2612_update();
+        m68k_execute(104);
     }
     vdp_set_vblank();
 
@@ -330,11 +454,16 @@ void frame()
     }
 }
 
-unsigned int  m68k_read_disassembler_16(unsigned int address)
+unsigned int m68k_read_disassembler_16(unsigned int address)
 {
     return m68k_read_memory_16(address);
 }
-unsigned int  m68k_read_disassembler_32(unsigned int address)
+unsigned int m68k_read_disassembler_32(unsigned int address)
 {
     return m68k_read_memory_32(address);
+}
+
+unsigned int get_cycle_counter()
+{
+    return m68k_cycles_run();
 }

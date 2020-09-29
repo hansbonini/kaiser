@@ -58,7 +58,8 @@ z80_registers = ['af', 'bc', 'de', 'hl', 'ix', 'iy','pc','sp']
 screen_buffer = create_string_buffer(320*240*4)
 scaled_buffer = create_string_buffer(320*240*4)
 # Allocate Audio Stream
-audio_buffer = create_string_buffer(1080 * 2)
+audio_buffer_size = 8192
+audio_buffer = create_string_buffer(audio_buffer_size)
 # Define cycle_counter
 cycle_counter = 0
 # Define status bar as global
@@ -576,13 +577,16 @@ class Display(qtw.QWidget):
         self.timer = timer
 
         audio_format = qtm.QAudioFormat();
-        audio_format.setSampleSize(16)
+        audio_format.setSampleRate(44100)
+        audio_format.setChannelCount(2)
+        audio_format.setSampleSize(32)
         audio_format.setCodec("audio/pcm")
-        audio_format.setByteOrder(qtm.QAudioFormat.BigEndian)
+        audio_format.setByteOrder(qtm.QAudioFormat.LittleEndian)
         audio_format.setSampleType(qtm.QAudioFormat.SignedInt)
         self.audio_output = qtm.QAudioOutput(audio_format, self)
+        self.audio_output.setVolume(1)
+        self.audio_output.setBufferSize(audio_buffer_size)
         self.sample = qt.QBuffer()
-        self.audio_output.start(self.sample)
         # Define last_fps_time as current time in timer
         self.last_fps_time = qt.QTime.currentTime()
 
@@ -822,7 +826,7 @@ class Display(qtw.QWidget):
             blit_screen(self.label, scaled_buffer, 1)
 
             # Play audio
-            self.audio_output.play(audio_buffer)
+            self.audio_output.start(self.sample)
 
             # Adjust Display and MainWindow size
             # for the new screen buffer
@@ -875,8 +879,12 @@ class Display(qtw.QWidget):
             blit_screen(self.label, scaled_buffer, 1)
 
             # Play audio
-            self.sample.setData(audio_buffer.raw)
-            #print(audio_buffer[1])
+            # self.sample.close()
+            # self.sample.setData(audio_buffer)
+            # self.sample.open(qt.QIODevice.ReadOnly)
+            # self.sample.seek(0)
+            # self.audio_output.start(self.sample)
+            #print(audio_buffer[0:10])
 
             # Adjust Display and MainWindow size
             # for the new screen buffer

@@ -4,6 +4,7 @@
 
 #define M68K_FREQ_DIVISOR 7
 #define Z80_FREQ_DIVISOR 14
+#define MCYCLES_PER_LINE 3420          // Cycles per Line
 
 /*
  * Megadrive VDP emulation
@@ -892,7 +893,6 @@ void vdp_clear_vblank()
 
 int vdp_hcounter()
 {
-    extern int MCYCLES_PER_LINE;
     int mclk = m68k_cycles_run() * M68K_FREQ_DIVISOR;
     int pixclk;
 
@@ -918,7 +918,6 @@ int vdp_hcounter()
 int vdp_vcounter()
 {
     extern int lines_per_frame;
-    extern int MCYCLES_PER_LINE;
     extern int cycle_counter;
     int vc = cycle_counter / MCYCLES_PER_LINE - 1;
     if (vc > (vdp_regs[1] & 0x08 ? 262 : 234))

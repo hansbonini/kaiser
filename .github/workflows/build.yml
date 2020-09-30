@@ -1,4 +1,4 @@
-name: C/C++ Windows Build
+name: C/C++ Build
 
 on:
   push:
@@ -7,32 +7,108 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
+  build_windows:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        os: [windows-latest]
+        include:
+          - os: windows-latest
+            COMPILER: gcc
+            LINKER: gcc
+            TARGET: Windows
+            ZIP: tar -a -c -f kaiser_windows-latest.zip core.dll kaiser.py LICENSE README.md
+    name: "Building kaiser_${{ matrix.os }}"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: setup-msys2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MSYS
+          update: true
+          install: p7zip tar
+      - name: make
+        run: |
+            git submodule init
+            git submodule update
+            make
+            ${{ matrix.zip }}
+        env:
+          CC: ${{ matrix.compiler }}
+          LD: ${{ matrix.linker }}
+          TARGET: ${{ matrix.target }}
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@latest
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: kaiser_nightly_${{ matrix.os }}_${{github.sha}}
+          release_name: Automated Release kaiser_nightly_${{ matrix.os }}_${{github.sha}}
+          body: |
+            Automated Release by GitHub Action CI
+          draft: false
+          prerelease: true
+      - name: Upload Release kaiser_nightly_${{ matrix.os }}.zip
+        id: upload-release-kaiser
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: kaiser_${{ matrix.os }}.zip
+          asset_name: kaiser_${{ matrix.os }}.zip
+          asset_content_type: application/zip
+
+  build_unix:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [macos-latest, ubuntu-latest]
         include:
           - os: macos-latest
             COMPILER: clang
             LINKER: clang
             TARGET: Mac
-          - os: windows-latest
-            COMPILER: gcc
-            LINKER: gcc
-            TARGET: Windows
+            ZIP: zip kaiser_macos-latest.zip core.so kaiser.py resources/* LICENSE README.md
           - os: ubuntu-latest
             COMPILER: cc
             LINKER: cc
             TARGET: Linux
+            ZIP: zip kaiser_ubuntu-latest.zip core.so kaiser.py resources/* LICENSE README.md
     name: "Building kaiser_${{ matrix.os }}"
     steps:
-    - uses: actions/checkout@v2
+    - name: Checkout code
+      uses: actions/checkout@v2
     - name: make
       run: |
           git submodule init
           git submodule update
           make
+          ${{ matrix.zip }}
       env:
         CC: ${{ matrix.compiler }}
         LD: ${{ matrix.linker }}
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@latest
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: kaiser_nightly_${{ matrix.os }}_${{github.sha}}
+        release_name: Automated Release kaiser_nightly_${{ matrix.os }}_${{github.sha}}
+        body: |
+          Automated Release by GitHub Action CI
+        draft: false
+        prerelease: true
+    - name: Upload Release kaiser_nightly_${{ matrix.os }}.zip
+      id: upload-release-kaiser
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: kaiser_${{ matrix.os }}.zip
+        asset_name: kaiser_${{ matrix.os }}.zip
+        asset_content_type: application/zip

@@ -3,7 +3,8 @@
 #include "libs/Musashi/m68k.h"
 #include "hardware/apu/ym2612.h"
 #include "hardware/apu/z80.h"
-#include "hardware/io/sega3155308.h"
+#include "hardware/bus/sega3155308.h"
+#include "hardware/io/sega3155345.h"
 #include "hardware/vdp/sega3155313.h"
 
 #define MCLOCK_NTSC 53693175    // NTSC CLOCK

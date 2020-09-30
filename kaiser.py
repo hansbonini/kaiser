@@ -932,7 +932,7 @@ class MainWindow(qtw.QMainWindow):
         '''
         try:
             key, pad = keymap_r[event.key()]
-            core.sega3155308_pad_press_button(pad, buttons.index(key))
+            core.sega3155345_pad_press_button(pad, buttons.index(key))
         except KeyError:
             super(MainWindow, self).keyPressEvent(event)
 
@@ -943,7 +943,7 @@ class MainWindow(qtw.QMainWindow):
         '''
         try:
             key, pad = keymap_r[event.key()]
-            core.sega3155308_pad_release_button(pad, buttons.index(key))
+            core.sega3155345_pad_release_button(pad, buttons.index(key))
         except KeyError:
             super(MainWindow, self).keyReleaseEvent(event)
 

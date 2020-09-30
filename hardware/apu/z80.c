@@ -1,6 +1,6 @@
 #include <libs/Z80/Z80.h>
 #include "z80.h"
-#include "hardware/io/sega3155308.h"
+#include "hardware/bus/sega3155308.h"
 
 #define M68K_FREQ_DIVISOR   7
 #define Z80_FREQ_DIVISOR    14

@@ -130,7 +130,7 @@ class CramDebug(qtw.QWidget):
         for y in range(4):
             for x in range(16):
                 # Get color from CRAM Buffer on VDP
-                color = core.vdp_get_cram(y*16+x)
+                color = core.sega3155313_get_cram(y*16+x)
                 # Convert 12-bits palette to RGB
                 red, green, blue = color >> 8, color >> 4, color
                 red, green, blue = (blue & 15) * \
@@ -159,7 +159,7 @@ class CramDebug(qtw.QWidget):
         # Allocate a buffer for VRAM Buffer
         cram = create_string_buffer(0x10000)
         # Get VRAM Buffer from VDP
-        core.vdp_get_cram_raw(cram)
+        core.sega3155313_get_cram_raw(cram)
         # Iterate over bytes in VRAM Buffer and write in dump file
         for x in range(0, 0x10000):
             dump.write(cram[x])
@@ -215,7 +215,7 @@ class VramDebug(qtw.QWidget):
         '''
         super().update()
         # Get VRAM Buffer from VDP
-        core.vdp_get_vram(self.vram_buffer, 1)
+        core.sega3155313_get_vram(self.vram_buffer, 1)
         # Create an RGB32 Image from VRAM Buffer
         image = qtg.QImage(self.vram_buffer, 128, 1024,
                            qtg.QImage.Format_RGB32)
@@ -251,7 +251,7 @@ class VramDebug(qtw.QWidget):
         # Allocate a buffer for VRAM Buffer
         vram = create_string_buffer(0x10000)
         # Get VRAM Buffer from VDP
-        core.vdp_get_vram_raw(vram)
+        core.sega3155313_get_vram_raw(vram)
         # Iterate over bytes in VRAM Buffer and write in dump file
         for x in range(0, 0x10000):
             dump.write(vram[x])
@@ -694,7 +694,7 @@ class Display(qtw.QWidget):
         global scaled_buffer
         scaled_buffer = create_string_buffer(
             320*240*4)
-        core.vdp_set_buffers(screen_buffer, scaled_buffer)
+        core.sega3155313_set_buffers(screen_buffer, scaled_buffer)
 
     def set_audio_buffer(self):
         '''

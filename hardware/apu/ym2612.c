@@ -2,57 +2,64 @@
 #include "ym2612.h"
 
 #define YM2612_FREQ 7670454
-#define YM2612_RATE YM2612_FREQ/72
+#define YM2612_RATE YM2612_FREQ / 72
 #define OUTPUT_FACTOR 11
 #define OUTPUT_FACTOR_F 12
 #define FILTER_CUTOFF 0.512331301282628 // 5894Hz  single pole IIR low pass
-#define FILTER_CUTOFF_I (1-FILTER_CUTOFF)
+#define FILTER_CUTOFF_I (1 - FILTER_CUTOFF)
 
-enum {
+enum
+{
     eg_num_attack = 0,
     eg_num_decay = 1,
     eg_num_sustain = 2,
     eg_num_release = 3
 };
 
-
 Bit32u *audio;
 static ym3438_t ym_chip;
 static Bit32u use_filter = 0;
 static Bit32u chip_type = YM2612;
 
-void ym2612_init() {
+void ym2612_init()
+{
     OPN2_SetOptions(chip_type);
     OPN2_Reset(&ym_chip, YM2612_RATE, YM2612_FREQ);
 }
 
-void ym2612_pulse_reset() {
+void ym2612_pulse_reset()
+{
     OPN2_Reset(&ym_chip, YM2612_RATE, YM2612_FREQ);
 }
 
-unsigned int ym2612_read_memory_8(unsigned int address) {
+unsigned int ym2612_read_memory_8(unsigned int address)
+{
     return OPN2_Read(&ym_chip, address);
 }
 
-void ym2612_write_memory_8(unsigned int address, unsigned int value) {
+void ym2612_write_memory_8(unsigned int address, unsigned int value)
+{
     address &= 0x3;
     //printf("[yamaha w8]0x%x\t %x\n", address, value);
     OPN2_Write(&ym_chip, address, value);
 }
 
-unsigned int ym2612_read_memory_16(unsigned int address) {
-    unsigned int value = OPN2_Read(&ym_chip, address) << 8 | OPN2_Read(&ym_chip, address+1);
+unsigned int ym2612_read_memory_16(unsigned int address)
+{
+    unsigned int value = OPN2_Read(&ym_chip, address) << 8 | OPN2_Read(&ym_chip, address + 1);
     return value;
 }
 
-void ym2612_write_memory_16(unsigned int address, unsigned int value) {
+void ym2612_write_memory_16(unsigned int address, unsigned int value)
+{
     address &= 0x3;
     //printf("[yamaha w16] 0x%x\n", address);
     OPN2_Write(&ym_chip, address, value >> 8);
-    OPN2_Write(&ym_chip, address+1, value &0xFF);
+    OPN2_Write(&ym_chip, address + 1, value & 0xFF);
 }
 
-void ym2612_update() {
+void ym2612_update()
+{
     //OPN2_GenerateResampled(&ym_chip, audio);
 }
 
@@ -91,9 +98,9 @@ void _OPN2_Reset(ym3438_t *chip, Bit32u rate, Bit32u clock)
 void _OPN2_SetChipType(Bit32u type)
 {
     use_filter = 0;
-    if(type == YM2612)
+    if (type == YM2612)
         use_filter = 1;
-    if(type == YM2612_W_FILTER)
+    if (type == YM2612_W_FILTER)
         type = YM2612;
     chip_type = type;
 }
@@ -138,7 +145,7 @@ void OPN2_GenerateResampled(ym3438_t *chip, Bit32s *buf)
     Bit32u i;
     Bit32s buffer[2];
     Bit32u mute;
-    
+
     while (chip->samplecnt >= chip->rateratio)
     {
         // printf("ratio     %d\t", chip->rateratio);
@@ -177,7 +184,7 @@ void OPN2_GenerateResampled(ym3438_t *chip, Bit32s *buf)
             OPN2_Clock(chip, buffer);
             if (!mute)
             {
-                
+
                 chip->samples[0] += buffer[0];
                 chip->samples[1] += buffer[1];
             }
@@ -189,27 +196,25 @@ void OPN2_GenerateResampled(ym3438_t *chip, Bit32s *buf)
                 }
                 chip->writebuf[chip->writebuf_cur].port &= 0x03;
                 OPN2_Write(chip, chip->writebuf[chip->writebuf_cur].port,
-                              chip->writebuf[chip->writebuf_cur].data);
+                           chip->writebuf[chip->writebuf_cur].data);
                 chip->writebuf_cur = (chip->writebuf_cur + 1) % OPN_WRITEBUF_SIZE;
             }
             chip->writebuf_samplecnt++;
         }
-        if(!use_filter)
+        if (!use_filter)
         {
             chip->samples[0] *= OUTPUT_FACTOR;
             chip->samples[1] *= OUTPUT_FACTOR;
         }
         else
         {
-            chip->samples[0] = chip->oldsamples[0] + FILTER_CUTOFF_I * (chip->samples[0]*OUTPUT_FACTOR_F - chip->oldsamples[0]);
-            chip->samples[1] = chip->oldsamples[1] + FILTER_CUTOFF_I * (chip->samples[1]*OUTPUT_FACTOR_F - chip->oldsamples[1]);
+            chip->samples[0] = chip->oldsamples[0] + FILTER_CUTOFF_I * (chip->samples[0] * OUTPUT_FACTOR_F - chip->oldsamples[0]);
+            chip->samples[1] = chip->oldsamples[1] + FILTER_CUTOFF_I * (chip->samples[1] * OUTPUT_FACTOR_F - chip->oldsamples[1]);
         }
         chip->samplecnt -= chip->rateratio;
     }
-    buf[0] = (Bit32s)((chip->oldsamples[0] * (chip->rateratio - chip->samplecnt)
-                     + chip->samples[0] * chip->samplecnt) / chip->rateratio);
-    buf[1] = (Bit32s)((chip->oldsamples[1] * (chip->rateratio - chip->samplecnt)
-                     + chip->samples[1] * chip->samplecnt) / chip->rateratio);
+    buf[0] = (Bit32s)((chip->oldsamples[0] * (chip->rateratio - chip->samplecnt) + chip->samples[0] * chip->samplecnt) / chip->rateratio);
+    buf[1] = (Bit32s)((chip->oldsamples[1] * (chip->rateratio - chip->samplecnt) + chip->samples[1] * chip->samplecnt) / chip->rateratio);
     chip->samplecnt += 1 << RSM_FRAC;
 }
 

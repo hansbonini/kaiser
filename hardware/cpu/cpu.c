@@ -3,7 +3,7 @@
 #include "libs/Musashi/m68k.h"
 #include "hardware/apu/ym2612.h"
 #include "hardware/apu/z80.h"
-#include "hardware/vdp/VDP.h"
+#include "hardware/vdp/sega3155313.h"
 #include "hardware/io/input.h"
 
 #define MAX_ROM_SIZE 0x400000   // ROM maximum size
@@ -59,7 +59,7 @@ void load_cartridge(unsigned char *buffer, size_t size)
     z80_set_memory(ZRAM);
 
     // Clear VDP RAM
-    vdp_clear_memory();
+    sega3155313_reset();
 
     // Copy file contents to CPU ROM memory
     memcpy(ROM, buffer, size);
@@ -130,7 +130,7 @@ unsigned int map_z80_address(unsigned int address)
 unsigned int map_io_address(unsigned int address)
 {
     unsigned int range = address & 0xFFFF;
-    if (address >= 0xa10000 && address < 0xa10020) // I/O and registers
+    if (address >= 0xa10000 && address < 0xa10020) //      I/O and registers
         return IO_CTRL;
     else if (address >= 0xa11100 && address < 0xa11300) // Z80 Reset & BUS
         return Z80_CTRL;
@@ -188,7 +188,7 @@ unsigned int read_memory(unsigned int address)
     case YM2612_ADDR:
         return ym2612_read_memory_8(address & 0xFFFF);
     case Z80_VDP_ADDR:
-        return vdp_read_memory_8(address & 0xFFFF);
+        return sega3155313_read_memory_8(address & 0xFFFF);
     case Z80_ROM_ADDR:
         return ROM[address];
     case IO_CTRL:
@@ -196,7 +196,7 @@ unsigned int read_memory(unsigned int address)
     case Z80_CTRL:
         return z80_read_ctrl(address & 0xFFFF);
     case VDP_ADDR:
-        return vdp_read_memory_8(address & 0xFFFF);
+        return sega3155313_read_memory_8(address & 0xFFFF);
     case RAM_ADDR:
         return RAM[address & 0xFFFF];
     default:
@@ -229,7 +229,7 @@ void write_memory(unsigned int address, unsigned int value)
         ym2612_write_memory_8(address & 0xFFFF, value);
         return;
     case Z80_VDP_ADDR:
-        vdp_write_memory_8(address & 0x7FFF, value);
+        sega3155313_write_memory_8(address & 0x7FFF, value);
     case Z80_ROM_ADDR:
         ROM[address] = (value & 0xFF);
         return;
@@ -240,7 +240,7 @@ void write_memory(unsigned int address, unsigned int value)
         z80_write_ctrl(address & 0xFFFF, value);
         return;
     case VDP_ADDR:
-        vdp_write_memory_8(address & 0xFFFF, value);
+        sega3155313_write_memory_8(address & 0xFFFF, value);
         return;
     case RAM_ADDR:
         RAM[address & 0xFFFF] = value;
@@ -283,11 +283,11 @@ unsigned int m68k_read_memory_16(unsigned int address)
     case YM2612_ADDR:
         return ym2612_read_memory_16(address & 0xFFFF);
     case Z80_VDP_ADDR:
-        return vdp_read_memory_16(address);
+        return sega3155313_read_memory_16(address);
     case Z80_ROM_ADDR:
         return ((ROM[address] << 8) & 0xFF) | (ROM[address] & 0xFF);
     case VDP_ADDR:
-        return vdp_read_memory_16(address);
+        return sega3155313_read_memory_16(address);
     default:
         w = (read_memory(address) << 8) | read_memory(address + 1);
         return w;
@@ -303,11 +303,11 @@ unsigned int m68k_read_memory_16(unsigned int address)
  ******************************************************************************/
 unsigned int m68k_read_memory_32(unsigned int address)
 {
-    unsigned int longword = read_memory(address) << 24 |
-                            read_memory(address + 1) << 16 |
-                            read_memory(address + 2) << 8 |
-                            read_memory(address + 3);
-    return longword;
+    unsigned int l = read_memory(address) << 24 |
+                     read_memory(address + 1) << 16 |
+                     read_memory(address + 2) << 8 |
+                     read_memory(address + 3);
+    return l;
 }
 
 /******************************************************************************
@@ -348,14 +348,14 @@ void m68k_write_memory_16(unsigned int address, unsigned int value)
         ym2612_write_memory_16(address & 0xFFFF, value);
         return;
     case Z80_VDP_ADDR:
-        vdp_write_memory_16(address, value);
+        sega3155313_write_memory_16(address, value);
         return;
     case Z80_ROM_ADDR:
         ROM[address] = ((value << 8) & 0xFF);
         ROM[address + 1] = (value & 0xFF);
         return;
     case VDP_ADDR:
-        vdp_write_memory_16(address, value);
+        sega3155313_write_memory_16(address, value);
         return;
     default:
         write_memory(address, (value >> 8) & 0xff);
@@ -389,19 +389,19 @@ void m68k_write_memory_32(unsigned int address, unsigned int value)
  ******************************************************************************/
 void frame()
 {
-    extern unsigned char vdp_regs[0x20], *screen, *audio;
-    extern unsigned int vdp_status;
+    extern unsigned char sega3155313_regs[0x20], *screen, *audio;
+    extern unsigned int sega3155313_status;
     extern int screen_width, screen_height;
-    int hint_counter = vdp_regs[10];
+    int hint_counter = sega3155313_regs[10];
     int line;
     extern int zclk;
 
     cycle_counter = 0;
 
-    screen_width = (vdp_regs[12] & 0x01) ? 320 : 256;
-    screen_height = (vdp_regs[1] & 0x08) ? 240 : 224;
+    screen_width = (sega3155313_regs[12] & 0x01) ? 320 : 256;
+    screen_height = (sega3155313_regs[1] & 0x08) ? 240 : 224;
 
-    vdp_clear_vblank();
+    sega3155313_clear_vblank();
 
     memset(screen, 0, 320 * 240 * 4); /* clear the screen before rendering */
     memset(audio, 0, 1080 * 2);       /* clear the audio before rendering */
@@ -413,34 +413,34 @@ void frame()
 
         if (--hint_counter < 0)
         {
-            hint_counter = vdp_regs[10];
-            if (vdp_regs[0] & 0x10)
+            hint_counter = sega3155313_regs[10];
+            if (sega3155313_regs[0] & 0x10)
             {
                 m68k_set_irq(4); /* HInt */
                 //m68k_execute(7000);
             }
         }
 
-        vdp_set_hblank();
+        sega3155313_set_hblank();
         m68k_execute(64 + 313 + 259); /* HBlank */
-        vdp_clear_hblank();
+        sega3155313_clear_hblank();
 
-        int enable_planes = BIT(vdp_regs[1], 6);
+        int enable_planes = BIT(sega3155313_regs[1], 6);
         if (enable_planes)
-            vdp_render_line(line); /* render line */
+            sega3155313_render_line(line); /* render line */
 
         ym2612_update();
         m68k_execute(104);
     }
-    vdp_set_vblank();
+    sega3155313_set_vblank();
 
     m68k_execute(588);
 
-    vdp_status |= 0x80;
+    sega3155313_status |= 0x80;
 
     m68k_execute(200);
 
-    if (vdp_regs[1] & 0x20)
+    if (sega3155313_regs[1] & 0x20)
     {
         m68k_set_irq(6); /* HInt */
     }

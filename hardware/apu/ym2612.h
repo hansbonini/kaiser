@@ -4,14 +4,16 @@
 
 #include "libs/NukedOPN2/ym3438.h"
 
-enum {
+enum
+{
     YM2612 = 0,
     YM3438_ASIC,
     YM3438_DISCRETE,
     YM2612_W_FILTER
 };
 
-typedef struct _opn2_writebuf {
+typedef struct _opn2_writebuf
+{
     Bit64u time;
     Bit8u port;
     Bit8u data;
@@ -109,7 +111,7 @@ typedef struct
     Bit8u timer_a_load_latch;
     Bit8u timer_a_overflow_flag;
     Bit8u timer_a_overflow;
-    
+
     Bit16u timer_b_cnt;
     Bit8u timer_b_subcnt;
     Bit16u timer_b_reg;
@@ -120,7 +122,7 @@ typedef struct
     Bit8u timer_b_load_latch;
     Bit8u timer_b_overflow_flag;
     Bit8u timer_b_overflow;
-    
+
     /* Register set */
     Bit8u mode_test_21[8];
     Bit8u mode_test_2c[8];
@@ -132,7 +134,7 @@ typedef struct
     Bit8u mode_kon_csm;
     Bit8u dacen;
     Bit16s dacdata;
-    
+
     Bit8u ks[24];
     Bit8u ar[24];
     Bit8u sr[24];
@@ -144,7 +146,7 @@ typedef struct
     Bit8u am[24];
     Bit8u tl[24];
     Bit8u ssg_eg[24];
-    
+
     Bit16u fnum[6];
     Bit8u block[6];
     Bit8u kcode[6];
@@ -159,11 +161,11 @@ typedef struct
     Bit8u ams[6];
     Bit8u pms[6];
 
-	Bit32u mute[7];
-	Bit32s rateratio;
-	Bit32s samplecnt;
-	Bit32s oldsamples[2];
-	Bit32s samples[2];
+    Bit32u mute[7];
+    Bit32s rateratio;
+    Bit32s samplecnt;
+    Bit32s oldsamples[2];
+    Bit32s samples[2];
 
     Bit64u writebuf_samplecnt;
     Bit32u writebuf_cur;
@@ -171,7 +173,7 @@ typedef struct
     Bit64u writebuf_lasttime;
     opn2_writebuf writebuf[OPN_WRITEBUF_SIZE];
 } ym2612_t;
-# define ym3438_t ym2612_t
+#define ym3438_t ym2612_t
 
 #define OPN2_Reset _OPN2_Reset
 #define OPN2_SetChipType _OPN2_SetChipType

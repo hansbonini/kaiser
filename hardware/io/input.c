@@ -17,24 +17,24 @@ enum pad_button
     PAD_S
 };
 
-int tmss_count=0;
+int tmss_count = 0;
 unsigned short button_state[3];
 unsigned short pad_state[3];
 unsigned char io_reg[16] = {0xa0, 0x7f, 0x7f, 0x7f, 0, 0, 0, 0xff, 0, 0, 0xff, 0, 0, 0xff, 0, 0}; /* initial state */
 
 void pad_press_button(int pad, int button)
 {
-    button_state[pad] |= (1<<button);
+    button_state[pad] |= (1 << button);
 }
 
 void pad_release_button(int pad, int button)
 {
-    button_state[pad] &= ~(1<<button);
+    button_state[pad] &= ~(1 << button);
 }
 
 void pad_write(int pad, int value)
 {
-    unsigned char mask = io_reg[pad+4];
+    unsigned char mask = io_reg[pad + 4];
 
     pad_state[pad] &= ~mask;
     pad_state[pad] |= value & mask;
@@ -62,25 +62,31 @@ void io_write_memory(unsigned int address, unsigned int value)
 {
     address >>= 1;
 
-    if (address == 0xC || address == 0x9 || address == 0xF ) {
-        switch(tmss_count) {
-            case 0: return 0x53;
-            case 1: return 0x45;
-            case 2: return 0x47;
-            case 3: return 0x51;
+    if (address == 0xC || address == 0x9 || address == 0xF)
+    {
+        switch (tmss_count)
+        {
+        case 0:
+            return 0x53;
+        case 1:
+            return 0x45;
+        case 2:
+            return 0x47;
+        case 3:
+            return 0x51;
         }
         tmss_count++;
         if (tmss_count == 4)
-            tmss_count=0;
-            z80_write_ctrl(0x1100,0);
-            z80_write_ctrl(0x1200,1);
-            z80_pulse_reset();
+            tmss_count = 0;
+        z80_write_ctrl(0x1100, 0);
+        z80_write_ctrl(0x1200, 1);
+        z80_pulse_reset();
     }
     if (address >= 0x1 && address < 0x4)
     {
         /* port data */
         io_reg[address] = value;
-        pad_write(address-1, value);
+        pad_write(address - 1, value);
         return;
     }
     else if (address >= 0x4 && address < 0x7)
@@ -89,7 +95,7 @@ void io_write_memory(unsigned int address, unsigned int value)
         if (io_reg[address] != value)
         {
             io_reg[address] = value;
-            pad_write(address-4, io_reg[address-3]);
+            pad_write(address - 4, io_reg[address - 3]);
         }
         return;
     }
@@ -103,10 +109,10 @@ unsigned int io_read_memory(unsigned int address)
 
     if (address >= 0x1 && address < 0x4)
     {
-        unsigned char mask = 0x80 | io_reg[address+3];
+        unsigned char mask = 0x80 | io_reg[address + 3];
         unsigned char value;
         value = io_reg[address] & mask;
-        value |= pad_read(address-1) & ~mask;
+        value |= pad_read(address - 1) & ~mask;
         return value;
     }
     else

@@ -49,11 +49,19 @@ void sega3155313_debug_status(char *s);
 void sega3155313_set_reg(int reg, unsigned char value);
 unsigned int sega3155313_get_reg(int reg);
 unsigned int sega3155313_read_data_port_16();
+void sega3155313_control_port_write(unsigned int value);
 void sega3155313_write_data_port_16(unsigned int value);
 void sega3155313_write_memory_8(unsigned int address, unsigned int value);
 void sega3155313_write_memory_16(unsigned int address, unsigned int value);
 unsigned int sega3155313_read_memory_8(unsigned int address);
 unsigned int sega3155313_read_memory_16(unsigned int address);
+
+void sega3155313_dma_trigger();
+void sega3155313_dma_fill(unsigned int value);
+void sega3155313_dma_m68k();
+void sega3155313_dma_copy();
+
+void sega3155313_vram_write(unsigned int address, unsigned int value);
 
 unsigned int sega3155313_get_status();
 unsigned short sega3155313_get_cram(int index);
@@ -64,3 +72,5 @@ void sega3155313_set_hblank();
 void sega3155313_clear_hblank();
 void sega3155313_set_vblank();
 void sega3155313_clear_vblank();
+
+void push_fifo(unsigned int value);

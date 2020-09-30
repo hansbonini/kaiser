@@ -7,3 +7,6 @@
 [submodule "libs/NukedOPN2"]
 	path = libs/NukedOPN2
 	url = https://github.com/nukeykt/Nuked-OPN2.git
+[submodule "libs/IL"]
+	path = libs/IL
+	url = https://github.com/DentonW/DevIL.git

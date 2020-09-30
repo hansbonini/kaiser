@@ -241,7 +241,7 @@ void sega3155308_write_memory_8(unsigned int address, unsigned int value)
     return;
 }
 
-sega3155308_write_memory_16(unsigned int address, unsigned int value) {
+void sega3155308_write_memory_16(unsigned int address, unsigned int value) {
     int mirror_address = address % 0x400000;
     unsigned int w;
     switch (sega3155308_map_address(address))

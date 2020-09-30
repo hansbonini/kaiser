@@ -47,17 +47,17 @@ void sega3155345_write_ctrl(unsigned int address, unsigned int value)
 
     if (address == 0xC || address == 0x9 || address == 0xF)
     {
-        switch (tmss_count)
-        {
-        case 0:
-            return 0x53;
-        case 1:
-            return 0x45;
-        case 2:
-            return 0x47;
-        case 3:
-            return 0x51;
-        }
+        // switch (tmss_count)
+        // {
+        // case 0:
+        //     return 0x53;
+        // case 1:
+        //     return 0x45;
+        // case 2:
+        //     return 0x47;
+        // case 3:
+        //     return 0x51;
+        // }
         tmss_count++;
         if (tmss_count == 4)
             tmss_count = 0;

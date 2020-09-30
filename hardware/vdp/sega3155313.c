@@ -210,6 +210,50 @@ unsigned int sega3155313_hvcounter()
 
 /******************************************************************************
  * 
+ *   SEGA 315-5313 Get Register
+ *   Read an value from specified register 
+ * 
+ ******************************************************************************/
+unsigned int sega3155313_get_reg(int reg)
+{
+    return sega3155313_regs[reg];
+}
+
+/******************************************************************************
+ * 
+ *   SEGA 315-5313 Set Register
+ *   Write an value to specified register 
+ * 
+ ******************************************************************************/
+void sega3155313_set_reg(int reg, unsigned char value)
+{
+    // Mode4 is not emulated yet. Anyway, access to registers > 0xA is blocked.
+    if (!BIT(sega3155313_regs[0x1], 2) && reg > 0xA)
+        return;
+
+    sega3155313_regs[reg] = value;
+
+    // Writing a register clear the first command word
+    // (see sonic3d intro wrong colors, and vdpfifotesting)
+    control_code &= ~0x3;
+    control_address &= ~0x3FFF;
+
+    switch (reg)
+    {
+    case 0:
+        if (REG0_HVLATCH && !hvcounter_latched)
+        {
+            hvcounter_latch = sega3155313_hvcounter();
+            hvcounter_latched = 1;
+        }
+        else if (!REG0_HVLATCH && hvcounter_latched)
+            hvcounter_latched = 0;
+        break;
+    }
+}
+
+/******************************************************************************
+ * 
  *   SEGA 315-5313 read from memory R8
  *   Read an value from mapped memory on specified address
  *   and return as byte   
@@ -367,6 +411,7 @@ void sega3155313_write_memory_16(unsigned int address, unsigned int value)
     }
 }
 
+
 /******************************************************************************
  * 
  *   SEGA 315-5313 write to control port
@@ -449,50 +494,6 @@ void sega3155313_write_data_port_16(unsigned int value)
     {
         dma_fill_pending = 0;
         sega3155313_dma_fill(value);
-    }
-}
-
-/******************************************************************************
- * 
- *   SEGA 315-5313 Get Register
- *   Read an value from specified register 
- * 
- ******************************************************************************/
-unsigned int sega3155313_get_reg(int reg)
-{
-    return sega3155313_regs[reg];
-}
-
-/******************************************************************************
- * 
- *   SEGA 315-5313 Set Register
- *   Write an value to specified register 
- * 
- ******************************************************************************/
-void sega3155313_set_reg(int reg, unsigned char value)
-{
-    // Mode4 is not emulated yet. Anyway, access to registers > 0xA is blocked.
-    if (!BIT(sega3155313_regs[0x1], 2) && reg > 0xA)
-        return;
-
-    sega3155313_regs[reg] = value;
-
-    // Writing a register clear the first command word
-    // (see sonic3d intro wrong colors, and vdpfifotesting)
-    control_code &= ~0x3;
-    control_address &= ~0x3FFF;
-
-    switch (reg)
-    {
-    case 0:
-        if (REG0_HVLATCH && !hvcounter_latched)
-        {
-            hvcounter_latch = sega3155313_hvcounter();
-            hvcounter_latched = 1;
-        }
-        else if (!REG0_HVLATCH && hvcounter_latched)
-            hvcounter_latched = 0;
-        break;
     }
 }
 
@@ -1086,7 +1087,7 @@ void sega3155313_dma_fill(unsigned int value)
  *   DMA process to copy from m68k to memory
  * 
  ******************************************************************************/
-void sega3155313_dma_m68k(unsigned int value)
+void sega3155313_dma_m68k()
 {
     int dma_length = REG19_DMA_LENGTH;
 

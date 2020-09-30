@@ -1,6 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
-#include <libs/hqx/src/hqx.h>
+// #include <libs/hqx/src/hqx.h>
 
 extern unsigned int *screen, *scaled_screen;
 
@@ -184,30 +184,30 @@ void scale_epx(unsigned int *dest, unsigned int *src, int scale)
     scale_epx_hw(dest, src, scale, height, width);
 }
 
-/* 
- * The hqx scaling algorithm, provided by the hqx library (http://code.google.com/p/hqx/)
- */
-void scale_hqx(unsigned int *dest, unsigned int *src, int scale)
-{
-    if (!hqx_init)
-    {
-        hqxInit();
-        hqx_init = 1;
-    }
+// /* 
+//  * The hqx scaling algorithm, provided by the hqx library (http://code.google.com/p/hqx/)
+//  */
+// void scale_hqx(unsigned int *dest, unsigned int *src, int scale)
+// {
+//     if (!hqx_init)
+//     {
+//         hqxInit();
+//         hqx_init = 1;
+//     }
 
-    if (scale == 2)
-    {
-        hq2x_32(src, dest, width, height);
-    }
-    else if (scale == 3)
-    {
-        hq3x_32(src, dest, width, height);
-    }
-    else if (scale == 4)
-    {
-        hq4x_32(src, dest, width, height);
-    }
-}
+//     if (scale == 2)
+//     {
+//         hq2x_32(src, dest, width, height);
+//     }
+//     else if (scale == 3)
+//     {
+//         hq3x_32(src, dest, width, height);
+//     }
+//     else if (scale == 4)
+//     {
+//         hq4x_32(src, dest, width, height);
+//     }
+// }
 
 struct s_filters
 {
@@ -215,8 +215,8 @@ struct s_filters
     void (*fn)(unsigned int *, unsigned int *, int);
 } filters[] = {
     {"None", scale_nearest},
-    {"EPX", scale_epx},
-    {"hqx", scale_hqx}
+    {"EPX", scale_epx}
+    // {"hqx", scale_hqx}
 };
 
 void scale_filter(const char *filter, int scale)

@@ -21,9 +21,9 @@ all: core.so
 clean:
 	rm core.so libs/Musashi/*.o libs/Musashi/softfloat/*.o libs/Musashi/m68kops.h libs/Musashi/m68kmake hardware/apu/*.o hardware/cpu/*.o hardware/io/*.o hardware/filters/*.o hardware/vdp/*.o libs/hqx/src/*.o libs/Z80/*.o libs/NukedOPN2/ym3438.o
 
-core.so: libs/Musashi/m68k.h libs/Musashi/m68kcpu.o libs/Musashi/m68kops.o libs/Musashi/m68kdasm.o libs/Musashi/softfloat/softfloat.o hardware/cpu/cpu.o hardware/vdp/sega3155313.o hardware/io/input.o hardware/filters/scale.o hardware/apu/z80.o hardware/apu/ym2612.o libs/hqx/src/init.o libs/hqx/src/hq2x.o libs/hqx/src/hq3x.o libs/hqx/src/hq4x.o libs/Z80/Z80.o libs/NukedOPN2/ym3438.o
+core.so: libs/Musashi/m68k.h libs/Musashi/m68kcpu.o libs/Musashi/m68kops.o libs/Musashi/m68kdasm.o libs/Musashi/softfloat/softfloat.o hardware/cpu/cpu.o hardware/vdp/sega3155313.o hardware/io/sega3155308.o hardware/filters/scale.o hardware/apu/z80.o hardware/apu/ym2612.o libs/hqx/src/init.o libs/hqx/src/hq2x.o libs/hqx/src/hq3x.o libs/hqx/src/hq4x.o libs/Z80/Z80.o libs/NukedOPN2/ym3438.o
 		@echo "Linking core.so"
-		@$(CC) libs/Musashi/m68kcpu.o libs/Musashi/m68kops.o libs/Musashi/m68kdasm.o libs/Musashi/softfloat/softfloat.o hardware/cpu/cpu.o hardware/vdp/sega3155313.o hardware/io/input.o hardware/filters/scale.o hardware/apu/z80.o hardware/apu/ym2612.o libs/hqx/src/init.o libs/hqx/src/hq2x.o libs/hqx/src/hq3x.o libs/hqx/src/hq4x.o libs/Z80/Z80.o libs/NukedOPN2/ym3438.o $(LDFLAGS) -o core.so
+		@$(CC) libs/Musashi/m68kcpu.o libs/Musashi/m68kops.o libs/Musashi/m68kdasm.o libs/Musashi/softfloat/softfloat.o hardware/cpu/cpu.o hardware/vdp/sega3155313.o hardware/io/sega3155308.o hardware/filters/scale.o hardware/apu/z80.o hardware/apu/ym2612.o libs/hqx/src/init.o libs/hqx/src/hq2x.o libs/hqx/src/hq3x.o libs/hqx/src/hq4x.o libs/Z80/Z80.o libs/NukedOPN2/ym3438.o $(LDFLAGS) -o core.so
 
 %.o: %.c
 		@echo "Compiling $<"

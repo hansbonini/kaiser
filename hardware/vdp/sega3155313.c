@@ -41,6 +41,10 @@ int hvcounter_latched = 0;
 int mode_h40;
 int mode_pal;
 
+// Store last address r/w
+unsigned int sega3155313_laddress_r=0;
+unsigned int sega3155313_laddress_w=0;
+
 /******************************************************************************
  * 
  *  Set a pixel on screen macro
@@ -318,6 +322,7 @@ unsigned int sega3155313_read_data_port_16()
             value |= VRAM[(control_address | 1) & 0xFFFF];
             control_address += REG15_DMA_INCREMENT;
             control_address &= 0xFFFF;
+            sega3155313_laddress_r = control_address;
             return value;
         case 0x4:
             if (((control_address & 0x7f) >> 1) >= 0x28)
@@ -327,18 +332,21 @@ unsigned int sega3155313_read_data_port_16()
             value = (value & VSRAM_BITMASK) | (fifo[3] & ~VSRAM_BITMASK);
             control_address += REG15_DMA_INCREMENT;
             control_address &= 0x7F;
+            sega3155313_laddress_r = control_address;
             return value;
         case 0x8:
             value = CRAM[(control_address & 0x7f) >> 1];
             value = (value & CRAM_BITMASK) | (fifo[3] & ~CRAM_BITMASK);
             control_address += REG15_DMA_INCREMENT;
             control_address &= 0x7F;
+            sega3155313_laddress_r = control_address;
             return value;
         case 0xC: /* 8-Bit memory access */
             value = VRAM[(control_address ^ 1) & 0xFFFF];
             value = (value & VRAM8_BITMASK) | (fifo[3] & ~VRAM8_BITMASK);
             control_address += REG15_DMA_INCREMENT;
             control_address &= 0xFFFF;
+            sega3155313_laddress_r = control_address;
             return value;
         default:
             printf("VDP Data Port unhandled");
@@ -421,6 +429,7 @@ void sega3155313_control_port_write(unsigned int value)
         {
             control_code = (control_code & 0x3c) | ((value >> 14) & 3);
             control_address = (control_address & 0xc000) | (value & 0x3fff);
+            sega3155313_laddress_w = control_address;
             control_pending = 1;
         }
     }
@@ -428,6 +437,7 @@ void sega3155313_control_port_write(unsigned int value)
     {
         control_code = (control_code & 3) | ((value >> 2) & 0x3c);
         control_address = (control_address & 0x3fff) | ((value & 3) << 14);
+        sega3155313_laddress_w = control_address;
         control_pending = 0;
 
         if ((control_code & 0x20))
@@ -457,14 +467,17 @@ void sega3155313_write_data_port_16(unsigned int value)
             sega3155313_vram_write(control_address, (value >> 8) & 0xFF);
             sega3155313_vram_write(control_address + 1, (value)&0xFF);
             control_address += REG15_DMA_INCREMENT;
+            sega3155313_laddress_w = control_address;
             break;
         case 0x3: /* CRAM write */
             CRAM[(control_address & 0x7f) >> 1] = value;
             control_address += REG15_DMA_INCREMENT;
+            sega3155313_laddress_w = control_address;
             break;
         case 0x5: /* VSRAM write */
             VSRAM[(control_address & 0x7f) >> 1] = value;
             control_address += REG15_DMA_INCREMENT;
+            sega3155313_laddress_w = control_address;
             break;
         case 0x0:
         case 0x4:
@@ -1192,14 +1205,27 @@ void sega3155313_get_debug_status(char *s)
 {
     int i = 0;
     s[0] = 0;
-    s += sprintf(s, "VDP: ");
-    s += sprintf(s, "%04x ", sega3155313_status);
-    for (i = 0; i < 0x20; i++)
-    {
-        if (!(i % 16))
-            s += sprintf(s, "\n");
-        s += sprintf(s, "%02x ", sega3155313_regs[i]);
-    }
+    s += sprintf(s, "ADDRESS: \t");
+    s += sprintf(s, "[R] %04x\n", sega3155313_laddress_r);
+    s += sprintf(s, "\t\t[W] %04x\n\n", sega3155313_laddress_w);
+    s += sprintf(s, "DMA: \t\t");
+    s += sprintf(s, "%s\n", REG1_DMA_ENABLED ? "ENABLED" : "DISABLED");
+    s += sprintf(s, " - ADDRESS\t\t%04x\n", dma_source);
+    s += sprintf(s, " - LENGTH\t\t%04x\n\n",dma_length);
+    s += sprintf(s, "STATUS: \t");
+    s += sprintf(s, "%04x \n", sega3155313_status);
+    s += sprintf(s, "PLANE A: \t\t");
+    s += sprintf(s, "%04x \n", REG2_NAMETABLE_A);
+    s += sprintf(s, "PLANE B: \t\t");
+    s += sprintf(s, "%04x \n", REG4_NAMETABLE_B);
+    s += sprintf(s, "PLANE WINDOW: \t\t");
+    s += sprintf(s, "%04x \n", REG3_NAMETABLE_W);
+    s += sprintf(s, "HCOUNTER: \t\t");
+    s += sprintf(s, "%04x \n", REG10_COLUMN_COUNTER);
+    s += sprintf(s, "VCOUNTER: \t\t");
+    s += sprintf(s, "%04x \n", REG10_LINE_COUNTER);
+    s += sprintf(s, "HSCROLL: \t\t");
+    s += sprintf(s, "%04x \n", REG13_HSCROLL_ADDRESS);
 }
 
 /******************************************************************************

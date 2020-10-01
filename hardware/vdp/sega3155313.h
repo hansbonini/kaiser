@@ -13,6 +13,7 @@
 #define REG5_SAT_ADDRESS ((sega3155313_regs[5] & (mode_h40 ? 0x7E : 0x7F)) << 9)
 #define REG5_SAT_SIZE (mode_h40 ? (1 << 10) : (1 << 9))
 #define REG10_LINE_COUNTER BITS(sega3155313_regs[10], 0, 8)
+#define REG10_COLUMN_COUNTER BITS(sega3155313_regs[10], 8, 15)
 #define REG11_HSCROLL_MODE ((sega3155313_regs[11] & 3))
 #define REG11_VSCROLL_MODE ((sega3155313_regs[11] & 4) >> 2)
 #define REG12_RS0 (sega3155313_regs[12] & 0x80) >> 7

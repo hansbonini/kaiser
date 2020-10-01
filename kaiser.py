@@ -75,6 +75,7 @@ breakpoint_state = False
 class Cartridge(object):
     def __init__(self, filename):
         self.filename = filename
+        self.title = ''
         if is_zipfile(filename):
             # if the file is a ZIP, try to open the largest file inside
             zipfile = ZipFile(filename, 'r')
@@ -83,9 +84,13 @@ class Cartridge(object):
             self.dump = zipfile.read(contents[0][1])
         else:
             self.dump = open(filename, 'rb').read()
+        self.title = self.dump[0x150:0x180].decode('ascii')
 
     def load(self):
         core.load_cartridge(self.dump, os.path.getsize(self.filename))
+    
+    def get_title(self):
+        return self.title
 
 
 class Joypads(qtw.QLabel):
@@ -178,7 +183,7 @@ class VramDebug(qtw.QWidget):
         self.title = 'VRAM Debug'           # Set Window Title
         self.setWindowTitle(self.title)
         self.height = 400                   # Set Window Height
-        self.width = 320                    # Set Window Width
+        self.width = 520                    # Set Window Width
         self.scroll_position = 0            # Set Scroller Position at 0
 
         # Allocate a buffer to VRAM Display
@@ -197,10 +202,16 @@ class VramDebug(qtw.QWidget):
         self.tilebox = qtw.QHBoxLayout()
         self.tilebox.addWidget(self.display_dump)
         self.tilebox.addWidget(self.s1)
+        # VDP Register as Label
+        self.sega3155313_regs_status = qtw.QLabel()
+        self.sega3155313_regs_status.maximumHeight = self.height
+        self.sega3155313_regs_status.maximumWidth = 200
+        self.sega3155313_regs_status.setText('')
         # Set a Vertical Layout to contain debug info and VRAM Display
-        self.box = qtw.QVBoxLayout()
+        self.box = qtw.QHBoxLayout()
         # Embed Horizontal Layout inside Vertical Layout
         self.box.addLayout(self.tilebox)
+        self.box.addWidget(self.sega3155313_regs_status)
         # Set Horizontal Layout as Window Layout
         self.setLayout(self.box)
         # Set Window position and size
@@ -230,6 +241,7 @@ class VramDebug(qtw.QWidget):
         pixmap.scroll(0, 864-self.scroll_position, pixmap.rect())
         # Set pixmap in VRAM Display
         self.display_dump.setPixmap(pixmap)
+        self.sega3155313_regs_status.setText(self.register_status())
 
     def pagination(self):
         '''
@@ -237,6 +249,11 @@ class VramDebug(qtw.QWidget):
         '''
         # Set scrollbar value as scroll position
         self.scroll_position = self.s1.value()
+    
+    def register_status(self):
+        registers = create_string_buffer(1024)
+        core.sega3155313_get_debug_status(registers)
+        return registers.value.decode()
 
     def dump(self):
         '''
@@ -300,7 +317,7 @@ class M68kDebug(qtw.QWidget):
         # Set Vertical Layout
         self.setLayout(self.box)
         # Set Window position and size
-        self.setGeometry(330, 0, self.width, self.height)
+        self.setGeometry(530, 0, self.width, self.height)
         # Set size as fixed
         self.setFixedSize(self.width, self.height)
         # Update and Show
@@ -418,7 +435,7 @@ class Z80Debug(qtw.QWidget):
         # Set Vertical Layout
         self.setLayout(self.box)
         # Set Window position and size
-        self.setGeometry(650, 0, self.width, self.height)
+        self.setGeometry(850, 0, self.width, self.height)
         # Set size as fixed
         self.setFixedSize(self.width, self.height)
         # Update and Show
@@ -720,6 +737,7 @@ class Display(qtw.QWidget):
             return
         self.cartridge = Cartridge(selected_file)
         self.cartridge.load()
+        self.parent.setWindowTitle('Kaiser - {}'.format(self.cartridge.get_title()))
 
         # Power ON M68K CPU
         core.power_on()

@@ -634,10 +634,10 @@ class Display(qtw.QWidget):
         # Create menu bar
         self.menubar = self.parent.menuBar()
         # Add main menus
-        menu_file = self.menubar.addMenu('&File')
-        menu_options = self.menubar.addMenu('&Options')
-        menu_dump = self.menubar.addMenu('&Dump')
-        menu_m68k = self.menubar.addMenu('&Debug')
+        menu_file = self.menubar.addMenu('File')
+        menu_options = self.menubar.addMenu('Options')
+        menu_dump = self.menubar.addMenu('Dump')
+        menu_m68k = self.menubar.addMenu('Debug')
         # Add child menus for File
         menu_file_open = qtw.QAction('Load Cartridge', self)
         menu_file_open.triggered.connect(self.load_cartridge)

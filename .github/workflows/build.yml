@@ -18,7 +18,7 @@ jobs:
             LINKER: gcc
             TARGET: Windows
             ZIP: tar -a -c -f kaiser_windows-latest-64.zip core.dll kaiser.py LICENSE README.md
-    name: "Building kaiser_${{ matrix.os }}"
+    name: "Building kaiser_${{ matrix.os }} 64-bits"
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -56,7 +56,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ steps.create_release_64.outputs.upload_url }}
           asset_path: kaiser_${{ matrix.os }}-64.zip
           asset_name: kaiser_${{ matrix.os }}-64.zip
           asset_content_type: application/zip
@@ -72,14 +72,14 @@ jobs:
             LINKER: gcc
             TARGET: Windows
             ZIP: tar -a -c -f kaiser_windows-latest-32.zip core.dll kaiser.py LICENSE README.md
-    name: "Building kaiser_${{ matrix.os }}"
+    name: "Building kaiser_${{ matrix.os }} 32-bits"
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
       - name: setup-msys2
         uses: msys2/setup-msys2@v2
         with:
-          msystem: MSYS2
+          msystem: MINGW32
           update: true
           install: p7zip tar
       - name: make
@@ -110,30 +110,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: kaiser_${{ matrix.os }}-32.zip
-          asset_name: kaiser_${{ matrix.os }}-32.zip
-          asset_content_type: application/zip
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@latest
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: kaiser_nightly_${{ matrix.os }}_32_${{github.sha}}
-          release_name: Automated Release kaiser_nightly_${{ matrix.os }}_32_${{github.sha}}
-          body: |
-            Automated Release by GitHub Action CI
-          draft: false
-          prerelease: true
-      - name: Upload Release kaiser_nightly_${{ matrix.os }}.zip
-        id: upload-release-kaiser
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          upload_url: ${{ steps.create_release_32.outputs.upload_url }}
           asset_path: kaiser_${{ matrix.os }}-32.zip
           asset_name: kaiser_${{ matrix.os }}-32.zip
           asset_content_type: application/zip

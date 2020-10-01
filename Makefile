@@ -1,7 +1,14 @@
 OS := $(shell uname)
+
 WARNINGS = -Wall -pedantic -Wno-unused-function -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-unused-variable
+
+ifeq ($(MSYS2_ARCH), x86_64)
+CFLAGS = $(WARNINGS) -c -Im68k -I. -O2 --std=c99 -fPIC -march=x86-64
+CFLAGS_M68K = $(WARNINGS) -c -Im68k -I. -O2 --std=c99 -fPIC -march=x86-64
+else
 CFLAGS = $(WARNINGS) -c -Im68k -I. -O2 --std=c99 -fPIC
 CFLAGS_M68K = $(WARNINGS) -c -Im68k -I. -O2 --std=c99 -fPIC
+endif
 LDFLAGS = -shared
 
 LIB_MUSASHI_DIR = libs/Musashi

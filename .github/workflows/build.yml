@@ -22,7 +22,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
-      - name: setup-msys2-64
+      - name: setup-msys2
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
@@ -39,7 +39,7 @@ jobs:
           LD: ${{ matrix.linker }}
           TARGET: ${{ matrix.target }}
       - name: Create Release
-        id: create_release
+        id: create_release_64
         uses: actions/create-release@latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -51,7 +51,7 @@ jobs:
           draft: false
           prerelease: true
       - name: Upload Release kaiser_nightly_${{ matrix.os }}_64_${{github.sha}}
-        id: upload-release-kaiser
+        id: upload_release_kaiser_64
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -93,7 +93,7 @@ jobs:
           LD: ${{ matrix.linker }}
           TARGET: ${{ matrix.target }}
       - name: Create Release
-        id: create_release
+        id: create_release_32
         uses: actions/create-release@latest
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -105,7 +105,7 @@ jobs:
           draft: false
           prerelease: true
       - name: Upload Release kaiser_nightly_${{ matrix.os }}_32_${{github.sha}}
-        id: upload-release-kaiser
+        id: upload_release_kaiser_32
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

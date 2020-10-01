@@ -98,6 +98,7 @@ void z80_init() {
 void z80_pulse_reset()
 {
     ResetZ80(&cpu);
+    reset=0;
 }
 
 void z80_execute(unsigned int target)
@@ -135,12 +136,11 @@ void z80_write_ctrl(unsigned int address, unsigned int value)
     {
         if (value)
         {
-            cpu.IRequest = INT_IRQ;
             reset = 1;
+            z80_pulse_reset();
         }
         else
         {
-            cpu.IRequest = INT_NONE;
             reset = 0;
         }
     }
@@ -158,7 +158,7 @@ unsigned int z80_read_ctrl(unsigned int address)
     }
     else if (address == 0x1200)
     {
-        return 0x00 | reset;
+        return 0x00 | !reset;
     }
     else if (address == 0x1201)
     {

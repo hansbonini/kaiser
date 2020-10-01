@@ -16,6 +16,7 @@ enum mapped_address
     Z80_ROM_ADDR,
     IO_CTRL,
     Z80_CTRL,
+    TMSS_CTRL,
     VDP_ADDR,
     RAM_ADDR
 };

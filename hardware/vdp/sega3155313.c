@@ -1098,7 +1098,6 @@ void sega3155313_dma_m68k()
 
     if (dma_length == 0)
         dma_length = 0xFFFF;
-
     do
     {
         unsigned int value = m68k_read_memory_16((dma_source_high | dma_source_low) << 1);

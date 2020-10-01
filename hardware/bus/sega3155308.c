@@ -7,6 +7,11 @@
 unsigned char ROM[MAX_ROM_SIZE];      // 68K Main Program
 unsigned char RAM[MAX_RAM_SIZE];      // 68K RAM
 unsigned char ZRAM[MAX_Z80_RAM_SIZE]; // Z80 RAM
+unsigned char TMSS[0x4];
+
+// TMSS
+int tmss_state = 0;
+int tmss_count = 0;
 
 /******************************************************************************
  * 
@@ -22,9 +27,11 @@ void load_cartridge(unsigned char *buffer, size_t size)
 
     // Set Z80 Memory as ZRAM
     z80_set_memory(ZRAM);
+    z80_pulse_reset();
 
     // Copy file contents to CPU ROM memory
     memcpy(ROM, buffer, size);
+    set_region();
 }
 
 /******************************************************************************
@@ -63,6 +70,23 @@ void reset_emulation(unsigned char *buffer, size_t size)
     sega3155313_reset();
 }
 
+
+/******************************************************************************
+ * 
+ *   Set Region
+ *   Look at ROM to set console compatible region            
+ * 
+ ******************************************************************************/
+void set_region() {
+    if (ROM[0x1F0]==0x31 || ROM[0x1F0]==0x4a)
+        sega3155345_set_reg(0, 0x00);
+    else if (ROM[0x1F0]==0x41)
+        sega3155345_set_reg(0, 0xE0);
+    else
+        sega3155345_set_reg(0, 0xA0);
+}
+
+
 /******************************************************************************
  * 
  *   Main memory address mapper
@@ -72,8 +96,6 @@ void reset_emulation(unsigned char *buffer, size_t size)
 unsigned int sega3155308_map_z80_address(unsigned int address)
 {
     unsigned int range = address & 0xFFFF;
-    if (range >= 0x0000 && range <= 0x1FFF) // Z80 RAM ADDRESS 0x0000 - 0x1FFF
-        return Z80_RAM_ADDR;
     if (range >= 0x4000 && range <= 0x5FFF) // YM2612 ADDRESS  0x4000 - 0x5FFF
         return YM2612_ADDR;
     if (range >= 0x7F00 && range <= 0x7F1F) // Z80 VDP ADDRESS 0x7F00 - 0x7F1F
@@ -81,7 +103,7 @@ unsigned int sega3155308_map_z80_address(unsigned int address)
     if (range >= 0x8000 && range <= 0xFFFF) // Z80 ROM ADDRESS 0x8000 - 0xFFFF
         return Z80_ROM_ADDR;
     // If not a valid address return 0
-    return 0;
+    return Z80_RAM_ADDR;
 }
 
 /******************************************************************************
@@ -97,6 +119,8 @@ unsigned int sega3155308_map_io_address(unsigned int address)
         return IO_CTRL;
     else if (address >= 0xa11100 && address < 0xa11300) // Z80 Reset & BUS
         return Z80_CTRL;
+    else if (address >= 0xa14000 && address < 0xa11404)
+        return (tmss_state ==0) ? TMSS_CTRL : NONE;
     // If not a valid address return 0
     return 0;
 }
@@ -115,7 +139,7 @@ unsigned int sega3155308_map_address(unsigned int address)
     // Check mask and select memory type
     if (range < 0x40) //                        ROM ADDRESS 0x000000 - 0x3FFFFF
         return ROM_ADDR;
-    else if (range >= 0x40 && range <= 0x9F)
+    else if (range >= 0x40 && range <= 0x80)
         return ROM_ADDR_MIRROR;
     else if (range == 0xA0) //                  Z80 ADDRESS 0xA00000 - 0xA0FFFF
         return sega3155308_map_z80_address(address);
@@ -138,11 +162,12 @@ unsigned int sega3155308_map_address(unsigned int address)
  ******************************************************************************/
 unsigned int sega3155308_read_memory_8(unsigned int address)
 {
-    int mirror_address = address % 0x400000;
+    int ret;
+    int mirror_address = address % 0x400000-2;
     switch (sega3155308_map_address(address))
     {
     case NONE:
-        return 0;
+        return 0xFF;
     case ROM_ADDR_MIRROR:
         return ROM[mirror_address];
     case ROM_ADDR:
@@ -159,6 +184,10 @@ unsigned int sega3155308_read_memory_8(unsigned int address)
         return sega3155345_read_ctrl(address & 0x1F);
     case Z80_CTRL:
         return z80_read_ctrl(address & 0xFFFF);
+    case TMSS_CTRL:
+        if (tmss_state == 0)
+            return TMSS[address&0x4];
+        return 0xFF;
     case VDP_ADDR:
         return sega3155313_read_memory_8(address & 0xFFFF);
     case RAM_ADDR:
@@ -171,13 +200,13 @@ unsigned int sega3155308_read_memory_8(unsigned int address)
 
 sega3155308_read_memory_16(unsigned int address) {
     unsigned int w;
-    int mirror_address = address % 0x400000;
+    int mirror_address = address % 0x400000-2;
     switch (sega3155308_map_address(address))
     {
     case NONE:
         return 0;
     case ROM_ADDR_MIRROR:
-        return (ROM[mirror_address] << 8) | ROM[mirror_address + 1];
+        return (ROM[mirror_address + 1] << 8) | ROM[mirror_address];
     case Z80_RAM_ADDR:
         return z80_read_memory_16(address & 0x7FFF);
     case YM2612_ADDR:
@@ -187,7 +216,7 @@ sega3155308_read_memory_16(unsigned int address) {
     case Z80_ROM_ADDR:
         return ((ROM[address] << 8) & 0xFF) | (ROM[address] & 0xFF);
     case VDP_ADDR:
-        return sega3155313_read_memory_16(address);
+        return sega3155313_read_memory_16(address & 0xFFFF);
     default:
         w = (sega3155308_read_memory_8(address) << 8) | sega3155308_read_memory_8(address + 1);
         return w;
@@ -203,7 +232,7 @@ sega3155308_read_memory_16(unsigned int address) {
  ******************************************************************************/
 void sega3155308_write_memory_8(unsigned int address, unsigned int value)
 {
-    int mirror_address = address % 0x400000;
+    int mirror_address = address % 0x400000-2;
     switch (sega3155308_map_address(address))
     {
     case ROM_ADDR:
@@ -221,13 +250,21 @@ void sega3155308_write_memory_8(unsigned int address, unsigned int value)
     case Z80_VDP_ADDR:
         sega3155313_write_memory_8(address & 0x7FFF, value);
     case Z80_ROM_ADDR:
-        ROM[address] = (value & 0xFF);
-        return;
+         ROM[address] = (value & 0xFF);
+         return;
     case IO_CTRL:
         sega3155345_write_ctrl(address & 0x1F, value);
         return;
     case Z80_CTRL:
         z80_write_ctrl(address & 0xFFFF, value);
+        return;
+    case TMSS_CTRL:
+        if (tmss_state == 0) {
+            TMSS[address&0x4] = value;
+            tmss_count++;
+            if (tmss_count==4)
+                tmss_state=1;
+        }
         return;
     case VDP_ADDR:
         sega3155313_write_memory_8(address & 0xFFFF, value);
@@ -242,15 +279,15 @@ void sega3155308_write_memory_8(unsigned int address, unsigned int value)
 }
 
 void sega3155308_write_memory_16(unsigned int address, unsigned int value) {
-    int mirror_address = address % 0x400000;
+    int mirror_address = address % 0x400000-2;
     unsigned int w;
     switch (sega3155308_map_address(address))
     {
     case NONE:
         return;
     case ROM_ADDR_MIRROR:
-        ROM[mirror_address] = value << 8;
-        ROM[mirror_address + 1] = value & 0xFF;
+        ROM[mirror_address + 1] = value << 8;
+        ROM[mirror_address] = value & 0xFF;
         return;
     case Z80_RAM_ADDR:
         z80_write_memory_16(address & 0x1FFF, value);
@@ -266,7 +303,7 @@ void sega3155308_write_memory_16(unsigned int address, unsigned int value) {
         ROM[address + 1] = (value & 0xFF);
         return;
     case VDP_ADDR:
-        sega3155313_write_memory_16(address, value);
+        sega3155313_write_memory_16(address & 0xFFFF, value);
         return;
     default:
         sega3155308_write_memory_8(address, (value >> 8) & 0xff);

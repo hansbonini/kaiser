@@ -33,7 +33,7 @@ jobs:
             $env:MSYSTEM = 'MINGW64'
             git submodule init
             git submodule update
-            msys2 make
+            make
             ${{ matrix.zip }}
         env:
           CC: ${{ matrix.compiler }}

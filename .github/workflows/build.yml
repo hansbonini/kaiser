@@ -27,7 +27,7 @@ jobs:
         with:
           msystem: MSYS
           update: true
-          install: p7zip tar
+          install: p7zip tar mingw-w64-x86_64-toolchain
       - name: make
         run: |
             git submodule init

@@ -14,8 +14,8 @@ jobs:
         os: [windows-latest]
         include:
           - os: windows-latest
-            COMPILER: mingw64-gcc
-            LINKER: mingw64-gcc
+            COMPILER: gcc
+            LINKER: gcc
             TARGET: Windows
             ZIP: tar -a -c -f kaiser_windows-latest-64.zip core.dll kaiser.py LICENSE README.md
     name: "Building kaiser_${{ matrix.os }} 64-bits"
@@ -30,7 +30,6 @@ jobs:
           install: p7zip tar mingw64/mingw-w64-x86_64-gcc mingw64/mingw-w64-x86_64-make
       - name: make
         run: |
-            $env:MSYSTEM = 'MINGW64'
             git submodule init
             git submodule update
             make
@@ -39,6 +38,8 @@ jobs:
           CC: ${{ matrix.compiler }}
           LD: ${{ matrix.linker }}
           TARGET: ${{ matrix.target }}
+          MSYS2_ARCH: x86_64
+          MSYSTEM: MINGW64
       - name: Create Release
         id: create_release_64
         uses: actions/create-release@latest

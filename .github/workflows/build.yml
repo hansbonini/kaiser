@@ -56,7 +56,7 @@ jobs:
           CC: ${{ matrix.compiler }}
           LD: ${{ matrix.linker }}
           TARGET: ${{ matrix.target }}
-     - name: Create Release
+      - name: Create Release
         id: create_release
         uses: actions/create-release@latest
         env:

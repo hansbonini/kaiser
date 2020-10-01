@@ -30,9 +30,10 @@ jobs:
           install: p7zip tar mingw64/mingw-w64-x86_64-gcc mingw64/mingw-w64-x86_64-make
       - name: make
         run: |
+            $env:MSYSTEM = 'MINGW64'
             git submodule init
             git submodule update
-            mingw64-make
+            msys2 make
             ${{ matrix.zip }}
         env:
           CC: ${{ matrix.compiler }}

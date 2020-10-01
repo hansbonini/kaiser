@@ -1,5 +1,5 @@
 OS := $(shell uname)
-WARNINGS = -Wall -pedantic -Wno-unused-function
+WARNINGS = -Wall -pedantic -Wno-unused-function -Wno-implicit-function-declaration -Wno-incompatible-pointer-types -Wno-unused-variable
 CFLAGS = $(WARNINGS) -c -Im68k -I. -O2 --std=c99 -fPIC
 CFLAGS_M68K = $(WARNINGS) -c -Im68k -I. -O2 --std=c99 -fPIC
 LDFLAGS = -shared

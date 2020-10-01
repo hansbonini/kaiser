@@ -1,4 +1,6 @@
 #include <stddef.h>
+#include <stdio.h>
+#include <string.h>
 
 #define MAX_ROM_SIZE 0x400000   
 #define MAX_RAM_SIZE 0x10000    
@@ -35,7 +37,12 @@ enum sega3155308_pad_button
 
 void load_cartridge(unsigned char *buffer, size_t size);
 void power_on();
-void reset_emulation(unsigned char *buffer, size_t size);
+void reset_emulation();
+void set_region();
 unsigned int sega3155308_map_z80_address(unsigned int address);
 unsigned int sega3155308_map_io_address(unsigned int address);
 unsigned int sega3155308_map_address(unsigned int address);
+unsigned int sega3155308_read_memory_8(unsigned int address);
+unsigned int sega3155308_read_memory_16(unsigned int address);
+void sega3155308_write_memory_8(unsigned int address, unsigned int value);
+void sega3155308_write_memory_16(unsigned int address, unsigned int value);

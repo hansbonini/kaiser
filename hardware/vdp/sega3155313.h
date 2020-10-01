@@ -1,7 +1,3 @@
-/*
- * Megadrive VDP emulation
- */
-
 #define BIT(v, idx) (((v) >> (idx)) & 1)
 #define BITS(v, idx, n) (((v) >> (idx)) & ((1 << (n)) - 1))
 #define REG0_HVLATCH BIT(sega3155313_regs[0], 1)
@@ -37,40 +33,52 @@
 #define REG23_DMA_SRCADDR_HIGH ((sega3155313_regs[23] & 0x7F) << 16)
 #define REG23_DMA_TYPE BITS(sega3155313_regs[23], 6, 2)
 
-void draw_cell_pixel(unsigned int cell, int cell_x, int cell_y, int x, int y);
-void sega3155313_render_bg(int line, int plane, int priority);
-void sega3155313_render_sprite(int sprite_index, int line);
-void sega3155313_render_sprites(int line, int priority);
-void sega3155313_render_line(int line);
+#define VRAM_MAX_SIZE 0x10000    // VRAM maximum size
+#define CRAM_MAX_SIZE 0x40       // CRAM maximum size
+#define VSRAM_MAX_SIZE 0x40      // VSRAM maximum size
+#define SAT_CACHE_MAX_SIZE 0x400 // SAT CACHE maximum size
+#define REG_SIZE 0x20            // REGISTERS total
+#define FIFO_SIZE 0x4            // FIFO maximum size
+
+#define M68K_FREQ_DIVISOR 7       // Frequency divisor to 68K clock
+#define Z80_FREQ_DIVISOR 14       // Frequency divisor to Z80 clock
+#define M68K_CYCLES_PER_LINE 3420 // M68K Cycles per Line
 
 void sega3155313_set_buffers(unsigned char *screen_buffer, unsigned char *scaled_buffer);
-void sega3155313_debug_status(char *s);
-
-void sega3155313_set_reg(int reg, unsigned char value);
-unsigned int sega3155313_get_reg(int reg);
-unsigned int sega3155313_read_data_port_16();
-void sega3155313_control_port_write(unsigned int value);
-void sega3155313_write_data_port_16(unsigned int value);
-void sega3155313_write_memory_8(unsigned int address, unsigned int value);
-void sega3155313_write_memory_16(unsigned int address, unsigned int value);
-unsigned int sega3155313_read_memory_8(unsigned int address);
-unsigned int sega3155313_read_memory_16(unsigned int address);
-
-void sega3155313_dma_trigger();
-void sega3155313_dma_fill(unsigned int value);
-void sega3155313_dma_m68k();
-void sega3155313_dma_copy();
-
-void sega3155313_vram_write(unsigned int address, unsigned int value);
-
-unsigned int sega3155313_get_status();
-unsigned short sega3155313_get_cram(int index);
-unsigned short sega3155313_get_vram(unsigned char *raw_buffer, int palette);
-unsigned short sega3155313_get_vram_raw(unsigned char *raw_buffer);
-
+void sega3155313_reset();
 void sega3155313_set_hblank();
 void sega3155313_clear_hblank();
 void sega3155313_set_vblank();
 void sega3155313_clear_vblank();
-
+int sega3155313_hcounter();
+int sega3155313_vcounter();
+unsigned int sega3155313_hvcounter();
+unsigned int sega3155313_get_reg(int reg);
+void sega3155313_set_reg(int reg, unsigned char value);
+unsigned int sega3155313_read_memory_8(unsigned int address);
+unsigned int sega3155313_read_memory_16(unsigned int address);
+unsigned int sega3155313_read_data_port_16();
+void sega3155313_write_memory_8(unsigned int address, unsigned int value);
+void sega3155313_write_memory_16(unsigned int address, unsigned int value);
+void sega3155313_control_port_write(unsigned int value);
+void sega3155313_write_data_port_16(unsigned int value);
 void push_fifo(unsigned int value);
+void draw_cell_pixel(unsigned int cell, int cell_x, int cell_y, int x, int y);
+void sega3155313_render_bg(int line, int plane, int priority);
+void sega3155313_render_plane_b(int line, int priority);
+void sega3155313_render_plane_a(int line, int priority);
+void sega3155313_render_sprite(int sprite_index, int line);
+void sega3155313_render_sprites(int line, int priority);
+void sega3155313_render_window(int line, int priority);
+void sega3155313_render_line(int line);
+void sega3155313_dma_trigger();
+void sega3155313_dma_fill(unsigned int value);
+void sega3155313_dma_m68k();
+void sega3155313_dma_copy();
+void sega3155313_vram_write(unsigned int address, unsigned int value);
+unsigned int sega3155313_get_status();
+void sega3155313_get_debug_status(char *s);
+unsigned short sega3155313_get_cram(int index);
+void sega3155313_get_vram(unsigned char *raw_buffer, int palette);
+void sega3155313_get_vram_raw(unsigned char *raw_buffer);
+void sega3155313_get_cram_raw(unsigned char *raw_buffer);

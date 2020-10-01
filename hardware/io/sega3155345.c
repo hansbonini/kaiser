@@ -83,7 +83,7 @@ unsigned int sega3155345_read_ctrl(unsigned int address)
     }
 }
 
-void sega3155345_set_reg(reg, value) {
+void sega3155345_set_reg(unsigned int reg, unsigned int value) {
     io_reg[reg] = value;
     return;
 }

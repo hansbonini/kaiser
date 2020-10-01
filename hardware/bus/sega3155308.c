@@ -58,7 +58,7 @@ void power_on()
  *   Send a pulse reset to 68K, Z80 and YM2612 Cores             
  * 
  ******************************************************************************/
-void reset_emulation(unsigned char *buffer, size_t size)
+void reset_emulation()
 {
    // Send a reset pulse to Z80 CPU
     z80_pulse_reset();
@@ -198,7 +198,7 @@ unsigned int sega3155308_read_memory_8(unsigned int address)
     return 0;
 }
 
-sega3155308_read_memory_16(unsigned int address) {
+unsigned int sega3155308_read_memory_16(unsigned int address) {
     unsigned int w;
     int mirror_address = address % 0x400000-2;
     switch (sega3155308_map_address(address))

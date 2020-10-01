@@ -1,17 +1,7 @@
 #include <stdio.h>
+#include <string.h>
 #include "libs/Musashi/m68k.h"
 #include "sega3155313.h"
-
-#define VRAM_MAX_SIZE 0x10000    // VRAM maximum size
-#define CRAM_MAX_SIZE 0x40       // CRAM maximum size
-#define VSRAM_MAX_SIZE 0x40      // VSRAM maximum size
-#define SAT_CACHE_MAX_SIZE 0x400 // SAT CACHE maximum size
-#define REG_SIZE 0x20            // REGISTERS total
-#define FIFO_SIZE 0x4            // FIFO maximum size
-
-#define M68K_FREQ_DIVISOR 7       // Frequency divisor to 68K clock
-#define Z80_FREQ_DIVISOR 14       // Frequency divisor to Z80 clock
-#define M68K_CYCLES_PER_LINE 3420 // M68K Cycles per Line
 
 // Setup VDP Memory
 unsigned char VRAM[VRAM_MAX_SIZE];           // VRAM
@@ -66,7 +56,6 @@ int mode_pal;
         scr[pixel * 4 + 2] = (CRAM[index] << 4) & 0xe0;                                       \
     } while (0);
 
-
 /******************************************************************************
  * 
  *  SEGA 315-5313 screen buffers
@@ -79,7 +68,6 @@ void sega3155313_set_buffers(unsigned char *screen_buffer, unsigned char *scaled
     scaled_screen = scaled_buffer;
 }
 
-
 /******************************************************************************
  * 
  *  SEGA 315-5313 Reset
@@ -88,9 +76,9 @@ void sega3155313_set_buffers(unsigned char *screen_buffer, unsigned char *scaled
  ******************************************************************************/
 void sega3155313_reset()
 {
-    memset(VRAM, 0, 0x10000);
-    memset(CRAM, 0, 0x40);
-    memset(VSRAM, 0, 0x40);
+    memset(VRAM, 0, VRAM_MAX_SIZE);
+    memset(CRAM, 0, CRAM_MAX_SIZE);
+    memset(VSRAM, 0, VSRAM_MAX_SIZE);
 }
 
 /******************************************************************************
@@ -353,10 +341,11 @@ unsigned int sega3155313_read_data_port_16()
             control_address &= 0xFFFF;
             return value;
         default:
-            printf(!'VDP Data Port unhandled');
+            printf("VDP Data Port unhandled");
             return 0xFF;
         }
     }
+    return 0x00;
 }
 
 /******************************************************************************
@@ -410,7 +399,6 @@ void sega3155313_write_memory_16(unsigned int address, unsigned int value)
         printf("unhandled sega3155313_write(%x, %x)\n", address, value);
     }
 }
-
 
 /******************************************************************************
  * 
@@ -486,7 +474,7 @@ void sega3155313_write_data_port_16(unsigned int value)
         case 0x9: // VDP FIFO TEST
             break;
         default:
-            printf(!'VDP Data Port invalid');
+            printf("VDP Data Port invalid");
         }
     }
     /* if a DMA is scheduled, do it */
@@ -679,7 +667,7 @@ void sega3155313_render_bg(int line, int plane, int priority)
  *  Wrapper to process and render PLANE B on screen      
  * 
  ******************************************************************************/
-sega3155313_render_plane_b(int line, int priority)
+void sega3155313_render_plane_b(int line, int priority)
 {
     sega3155313_render_bg(line, 0, priority);
 }
@@ -690,7 +678,7 @@ sega3155313_render_plane_b(int line, int priority)
  *  Wrapper to process and render PLANE A on screen      
  * 
  ******************************************************************************/
-sega3155313_render_plane_a(int line, int priority)
+void sega3155313_render_plane_a(int line, int priority)
 {
     sega3155313_render_bg(line, 1, priority);
 }
@@ -1047,7 +1035,7 @@ void sega3155313_dma_fill(unsigned int value)
         case 0x1:
             do
             {
-                sega3155313_vram_write(control_address + 1 & 0xFFFF, value >> 8);
+                sega3155313_vram_write((control_address + 1) & 0xFFFF, value >> 8);
                 control_address += REG15_DMA_INCREMENT;
                 dma_source++;
             } while (--dma_length);
@@ -1231,7 +1219,7 @@ unsigned short sega3155313_get_cram(int index)
  *   Return current VRAM buffer
  * 
  ******************************************************************************/
-unsigned short sega3155313_get_vram(unsigned char *raw_buffer, int palette)
+void sega3155313_get_vram(unsigned char *raw_buffer, int palette)
 {
     int pixel = 0;
     unsigned char temp_buffer[2048 * 64];
@@ -1273,7 +1261,7 @@ unsigned short sega3155313_get_vram(unsigned char *raw_buffer, int palette)
  *   Return current VRAM buffer as RAW
  * 
  ******************************************************************************/
-unsigned short sega3155313_get_vram_raw(unsigned char *raw_buffer)
+void sega3155313_get_vram_raw(unsigned char *raw_buffer)
 {
     for (int pixel = 0; pixel < 0x10000; pixel++)
     {
@@ -1287,7 +1275,7 @@ unsigned short sega3155313_get_vram_raw(unsigned char *raw_buffer)
  *   Return current CRAM buffer as RAW
  * 
  ******************************************************************************/
-unsigned short sega3155313_get_cram_raw(unsigned char *raw_buffer)
+void sega3155313_get_cram_raw(unsigned char *raw_buffer)
 {
     for (int color = 0; color < 0x40; color++)
     {

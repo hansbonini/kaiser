@@ -1,3 +1,4 @@
+#include <string.h>
 #include <libs/NukedOPN2/ym3438.h>
 #include "ym2612.h"
 

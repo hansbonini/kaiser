@@ -7,7 +7,7 @@
 #include "hardware/io/sega3155345.h"
 #include "hardware/vdp/sega3155313.h"
 
-#define MCLOCK_NTSC 53693175    // NTSC CLOCK
+#define MCLOCK_NTSC 53693175 // NTSC CLOCK
 
 // Define default number of lines per frame
 int lines_per_frame = 262; // NTSC: 262 lines
@@ -61,7 +61,6 @@ unsigned int m68k_read_memory_32(unsigned int address)
 void m68k_write_memory_8(unsigned int address, unsigned int value)
 {
     sega3155308_write_memory_8(address, value);
-
     return;
 }
 
@@ -73,7 +72,7 @@ void m68k_write_memory_8(unsigned int address, unsigned int value)
  ******************************************************************************/
 void m68k_write_memory_16(unsigned int address, unsigned int value)
 {
-    sega3155308_write_memory_16();
+    sega3155308_write_memory_16(address, value);
     return;
 }
 
@@ -87,7 +86,6 @@ void m68k_write_memory_32(unsigned int address, unsigned int value)
 {
     m68k_write_memory_16(address, (value >> 16) & 0xffff);
     m68k_write_memory_16(address + 2, (value)&0xffff);
-
     return;
 }
 

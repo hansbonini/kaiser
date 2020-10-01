@@ -23,8 +23,11 @@ from PyQt5 import QtMultimedia as qtm
 '''
 KAISER Sega Genesis/Megadrive debbuger
 '''
+
+is_windows = hasattr(sys, 'getwindowsversion')
+
 # Import Core as DLL
-core = CDLL('./core.so')
+core = CDLL('./core.dll' if is_windows else './core.so')
 
 # Define default directories
 screenshot_dir = './screenshots'

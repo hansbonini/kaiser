@@ -290,7 +290,7 @@ unsigned int sega3155313_read_memory_16(unsigned int address)
         return 0xFFFF;
     default:
         printf("unhandled sega3155313_read(%x)\n", address);
-        return 0xFF;
+        return 0xFFFF;
     }
 }
 
@@ -349,7 +349,7 @@ unsigned int sega3155313_read_data_port_16()
             sega3155313_laddress_r = control_address;
             return value;
         default:
-            printf("VDP Data Port unhandled");
+            printf("unhandled sega3155313_read_data_port_16(%x)\n", control_address);
             return 0xFF;
         }
     }
@@ -395,6 +395,11 @@ void sega3155313_write_memory_16(unsigned int address, unsigned int value)
     case 0x4:
     case 0x6:
         sega3155313_control_port_write(value);
+        return;
+    case 0x8:
+    case 0xA:
+    case 0xC:
+    case 0xE:
         return;
     case 0x18:
         // VDP FIFO TEST
@@ -467,16 +472,19 @@ void sega3155313_write_data_port_16(unsigned int value)
             sega3155313_vram_write(control_address, (value >> 8) & 0xFF);
             sega3155313_vram_write(control_address + 1, (value)&0xFF);
             control_address += REG15_DMA_INCREMENT;
+            control_address &= 0xFFFF;
             sega3155313_laddress_w = control_address;
             break;
         case 0x3: /* CRAM write */
             CRAM[(control_address & 0x7f) >> 1] = value;
             control_address += REG15_DMA_INCREMENT;
+            control_address &= 0xFFFF;
             sega3155313_laddress_w = control_address;
             break;
         case 0x5: /* VSRAM write */
             VSRAM[(control_address & 0x7f) >> 1] = value;
             control_address += REG15_DMA_INCREMENT;
+            control_address &= 0xFFFF;
             sega3155313_laddress_w = control_address;
             break;
         case 0x0:
@@ -963,6 +971,8 @@ void sega3155313_render_window(int line, int priority)
         int pri = ((cell & 0x8000) >> 15);
         if ((pri == 1 && priority == 1) || (pri == 0 && priority == 0))
             draw_cell_pixel(cell, hcolumn, vcolumn, column, line);
+        else
+            column++;
     }
 }
 
@@ -1048,9 +1058,10 @@ void sega3155313_dma_fill(unsigned int value)
         case 0x1:
             do
             {
-                sega3155313_vram_write((control_address + 1) & 0xFFFF, value >> 8);
+                sega3155313_vram_write((control_address ^ 1) & 0xFFFF, value >> 8);
                 control_address += REG15_DMA_INCREMENT;
                 dma_source++;
+                if (control_address>0xffff) control_address = 0x0000;
             } while (--dma_length);
             break;
         case 0x3: // undocumented and buggy, see vdpfifotesting
@@ -1078,8 +1089,9 @@ void sega3155313_dma_fill(unsigned int value)
     sega3155313_regs[19] = sega3155313_regs[20] = 0;
 
     // Update DMA source address after end of transfer
-    sega3155313_regs[21] = dma_source & 0xFF;
-    sega3155313_regs[22] = dma_source >> 8;
+    sega3155313_regs[21] = dma_source >> 1 & 0xFF;
+    sega3155313_regs[22] = dma_source >> 9 & 0xFF;
+    sega3155313_regs[23] = dma_source >> 17 & 0xFF;
 }
 
 /******************************************************************************
@@ -1219,7 +1231,7 @@ void sega3155313_get_debug_status(char *s)
     s += sprintf(s, "PLANE B: \t\t");
     s += sprintf(s, "%04x \n", REG4_NAMETABLE_B);
     s += sprintf(s, "PLANE WINDOW: \t\t");
-    s += sprintf(s, "%04x \n", REG3_NAMETABLE_W);
+    s += sprintf(s, "%04x \n", REG3_NAMETABLE_W*0x400);
     s += sprintf(s, "HCOUNTER: \t\t");
     s += sprintf(s, "%04x \n", REG10_COLUMN_COUNTER);
     s += sprintf(s, "VCOUNTER: \t\t");

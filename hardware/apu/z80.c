@@ -93,6 +93,7 @@ void z80_init() {
     cpu.Trace = 0;
     cpu.Trap = 0x0009;
     ResetZ80(&cpu);
+    reset=0;
 }
 
 void z80_pulse_reset()
@@ -137,11 +138,11 @@ void z80_write_ctrl(unsigned int address, unsigned int value)
         if (value)
         {
             reset = 1;
-            z80_pulse_reset();
         }
         else
         {
             reset = 0;
+            z80_pulse_reset();
         }
     }
 }
@@ -164,7 +165,7 @@ unsigned int z80_read_ctrl(unsigned int address)
     {
         return 0x00;
     }
-    return 0;
+    return 0xFF;
 }
 
 void z80_write_memory_8(unsigned int address, unsigned int value)
@@ -183,7 +184,7 @@ void z80_write_memory_16(unsigned int address, unsigned int value)
 }
 unsigned int z80_read_memory_16(unsigned int address)
 {
-    unsigned int value = RdZ80(address) << 8 | RdZ80(address);
+    unsigned int value = (RdZ80(address) << 8) | RdZ80(address+1);
     return value;
 }
 

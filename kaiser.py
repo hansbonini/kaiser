@@ -84,7 +84,10 @@ class Cartridge(object):
             self.dump = zipfile.read(contents[0][1])
         else:
             self.dump = open(filename, 'rb').read()
-        self.title = self.dump[0x150:0x180].decode('ascii')
+        try:
+            self.title = self.dump[0x150:0x17F].decode('ascii')
+        except:
+            self.title = ''
 
     def load(self):
         core.load_cartridge(self.dump, os.path.getsize(self.filename))

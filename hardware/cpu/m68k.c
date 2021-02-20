@@ -45,10 +45,7 @@ unsigned int m68k_read_memory_16(unsigned int address)
  ******************************************************************************/
 unsigned int m68k_read_memory_32(unsigned int address)
 {
-    unsigned int l = m68k_read_memory_8(address) << 24 |
-                     m68k_read_memory_8(address + 1) << 16 |
-                     m68k_read_memory_8(address + 2) << 8 |
-                     m68k_read_memory_8(address + 3);
+    unsigned int l = (m68k_read_memory_16(address) << 16) | m68k_read_memory_16(address + 2);
     return l;
 }
 
